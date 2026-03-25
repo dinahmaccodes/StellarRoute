@@ -39,6 +39,10 @@ build/
 *.wasm
 *.wasm.gz
 
+# Node
+node_modules/
+.npm/
+
 # Test coverage
 tarpaulin-report.html
 coverage/
@@ -72,3 +76,4 @@ GITHUB_ISSUES.md
 
 issue.md
 commit.md
+
