@@ -53,6 +53,9 @@ config = "0.13"
 # Caching
 redis = { version = "0.24", features = ["tokio-comp", "connection-manager"] }
 
+# Property-based testing
+proptest = "1"
+
 # Clippy and formatting
 [workspace.lints.clippy]
 type_complexity = "allow"
