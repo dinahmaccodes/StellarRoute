@@ -44,21 +44,79 @@ pub async fn get_quote(
     Path((base, quote)): Path<(String, String)>,
     Query(params): Query<QuoteParams>,
 ) -> Result<Json<QuoteResponse>> {
+    let quote = get_quote_internal(
+        &state,
+        &base,
+        &quote,
+        params.amount.as_deref(),
+        params.slippage_bps,
+        Some(params.quote_type),
+    )
+    .await?;
+    Ok(Json(quote))
+}
+
+/// POST /api/v1/batch/quote
+///
+/// Returns multiple best available prices in a single request
+pub async fn get_batch_quotes(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<crate::models::request::BatchQuoteRequest>,
+) -> Result<Json<crate::models::response::BatchQuoteResponse>> {
+    debug!("Getting {} batch quotes", payload.quotes.len());
+
+    if payload.quotes.is_empty() {
+        return Err(ApiError::Validation("Empty batch request".to_string()));
+    }
+
+    if payload.quotes.len() > 25 {
+        return Err(ApiError::Validation(
+            "Batch size cannot exceed 25 items".to_string(),
+        ));
+    }
+
+    let mut quotes = Vec::with_capacity(payload.quotes.len());
+    for item in payload.quotes {
+        let quote = get_quote_internal(
+            &state,
+            &item.base,
+            &item.quote,
+            item.amount.as_deref(),
+            item.slippage_bps,
+            item.quote_type,
+        )
+        .await?;
+        quotes.push(quote);
+    }
+
+    let total = quotes.len();
+    Ok(Json(crate::models::response::BatchQuoteResponse {
+        quotes,
+        total,
+    }))
+}
+
+async fn get_quote_internal(
+    state: &AppState,
+    base: &str,
+    quote: &str,
+    amount_str: Option<&str>,
+    slippage_bps: Option<u32>,
+    quote_type: Option<crate::models::request::QuoteType>,
+) -> Result<QuoteResponse> {
     debug!(
-        "Getting quote for {}/{} with params: {:?}",
-        base, quote, params
+        "Getting internal quote for {}/{} (amount: {:?}, type: {:?})",
+        base, quote, amount_str, quote_type
     );
 
     // Parse asset identifiers
-    let base_asset = AssetPath::parse(&base)
+    let base_asset = AssetPath::parse(base)
         .map_err(|e| ApiError::InvalidAsset(format!("Invalid base asset: {}", e)))?;
-    let quote_asset = AssetPath::parse(&quote)
+    let quote_asset = AssetPath::parse(quote)
         .map_err(|e| ApiError::InvalidAsset(format!("Invalid quote asset: {}", e)))?;
 
     // Parse amount (default to 1)
-    let amount: f64 = params
-        .amount
-        .as_deref()
+    let amount: f64 = amount_str
         .unwrap_or("1")
         .parse()
         .map_err(|_| ApiError::Validation("Invalid amount".to_string()))?;
@@ -69,44 +127,46 @@ pub async fn get_quote(
         ));
     }
 
-    let slippage_bps = params.slippage_bps.unwrap_or(50);
+    let slippage_bps = slippage_bps.unwrap_or(50);
     if slippage_bps > 10_000 {
         return Err(ApiError::Validation(
             "slippage_bps must be between 0 and 10000".to_string(),
         ));
     }
-    let quote_type = match params.quote_type {
+    let quote_type_str = match quote_type.unwrap_or(crate::models::request::QuoteType::Sell) {
         crate::models::request::QuoteType::Sell => "sell",
         crate::models::request::QuoteType::Buy => "buy",
     };
 
-    let base_id = find_asset_id(&state, &base_asset).await?;
-    let quote_id = find_asset_id(&state, &quote_asset).await?;
+    let base_id = find_asset_id(state, &base_asset).await?;
+    let quote_id = find_asset_id(state, &quote_asset).await?;
 
-    maybe_invalidate_quote_cache(&state, &base, &quote, base_id, quote_id).await?;
+    maybe_invalidate_quote_cache(state, base, quote, base_id, quote_id).await?;
 
     // Try to get from cache first
-    let amount_str = format!("{:.7}", amount);
-    let quote_cache_key = cache::keys::quote(&base, &quote, &amount_str, slippage_bps, quote_type);
+    let fmt_amount_str = format!("{:.7}", amount);
+    let quote_cache_key = cache::keys::quote(
+        base,
+        quote,
+        &fmt_amount_str,
+        slippage_bps,
+        quote_type_str,
+    );
     if let Some(cache) = &state.cache {
         if let Ok(mut cache) = cache.try_lock() {
             if let Some(cached) = cache.get::<QuoteResponse>(&quote_cache_key).await {
                 state.cache_metrics.inc_quote_hit();
-                debug!("Returning cached quote for {}/{}", base, quote);
-                return Ok(Json(cached));
+                return Ok(cached);
             }
-
             state.cache_metrics.inc_quote_miss();
         }
     }
 
     // For now, implement simple direct path (SDEX only)
-    // TODO: Implement multi-hop routing in Phase 2
     let (price, path, rationale) =
-        find_best_price(&state, &base_asset, &quote_asset, base_id, quote_id, amount).await?;
+        find_best_price(state, &base_asset, &quote_asset, base_id, quote_id, amount).await?;
 
     let total = amount * price;
-    // Keep timestamps in milliseconds to match API docs and frontend staleness logic.
     let timestamp = chrono::Utc::now().timestamp_millis();
     let ttl_seconds = u32::try_from(state.cache_policy.quote_ttl.as_secs()).ok();
     let expires_at = i64::try_from(state.cache_policy.quote_ttl.as_millis())
@@ -119,7 +179,7 @@ pub async fn get_quote(
         amount: format!("{:.7}", amount),
         price: format!("{:.7}", price),
         total: format!("{:.7}", total),
-        quote_type: quote_type.to_string(),
+        quote_type: quote_type_str.to_string(),
         path,
         timestamp,
         expires_at,
@@ -128,7 +188,7 @@ pub async fn get_quote(
         rationale: Some(rationale),
     };
 
-    // Cache the response (TTL: 2 seconds for quote data)
+    // Cache the response
     if let Some(cache) = &state.cache {
         if let Ok(mut cache) = cache.try_lock() {
             let _ = cache
@@ -137,7 +197,7 @@ pub async fn get_quote(
         }
     }
 
-    Ok(Json(response))
+    Ok(response)
 }
 
 /// Find best price for a trading pair

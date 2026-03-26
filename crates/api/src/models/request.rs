@@ -14,6 +14,22 @@ pub struct QuoteParams {
     pub quote_type: QuoteType,
 }
 
+/// Request item for batch quotes
+#[derive(Debug, Deserialize)]
+pub struct QuoteRequestItem {
+    pub base: String,
+    pub quote: String,
+    pub amount: Option<String>,
+    pub slippage_bps: Option<u32>,
+    pub quote_type: Option<QuoteType>,
+}
+
+/// Batch quote request
+#[derive(Debug, Deserialize)]
+pub struct BatchQuoteRequest {
+    pub quotes: Vec<QuoteRequestItem>,
+}
+
 fn default_quote_type() -> QuoteType {
     QuoteType::Sell
 }

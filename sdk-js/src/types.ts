@@ -112,6 +112,30 @@ export interface PriceQuote {
 }
 
 /**
+ * A single request item for a batch quote.
+ */
+export interface QuoteRequestItem {
+  /** Base asset identifier: "native", "CODE", or "CODE:ISSUER". */
+  base: string;
+  /** Quote asset identifier. */
+  quote: string;
+  /** Amount to trade (optional). */
+  amount?: number;
+  /** Direction of the quote ("sell" or "buy"). Defaults to "sell". */
+  quote_type?: QuoteType;
+}
+
+/**
+ * Response from a batch quote request.
+ */
+export interface BatchQuoteResponse {
+  /** Array of quotes in the same order as requested. */
+  quotes: PriceQuote[];
+  /** Total number of quotes successfully fetched. */
+  total: number;
+}
+
+/**
  * Configuration for quote staleness detection
  */
 export interface QuoteStalenessConfig {

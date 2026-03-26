@@ -148,6 +148,15 @@ pub struct QuoteResponse {
     pub rationale: Option<QuoteRationaleMetadata>,
 }
 
+/// Response for a batch quote request
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct BatchQuoteResponse {
+    /// Array of quotes in the same order as requested
+    pub quotes: Vec<QuoteResponse>,
+    /// Total number of quotes successfully fetched
+    pub total: usize,
+}
+
 /// Configuration for quote staleness detection
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct QuoteStalenessConfig {

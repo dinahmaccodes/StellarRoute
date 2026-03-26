@@ -27,20 +27,32 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-interface TransactionConfirmationModalProps {
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-  // Trade details
+interface BatchSwapItem {
   fromAsset: string;
   fromAmount: string;
   toAsset: string;
   toAmount: string;
   exchangeRate: string;
   priceImpact: string;
+  routePath: PathStep[];
+}
+
+interface TransactionConfirmationModalProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  // Batch details (if provided, individual trade details below are ignored for the main view)
+  swaps?: BatchSwapItem[];
+  // Individual trade details (legacy / single mode)
+  fromAsset?: string;
+  fromAmount?: string;
+  toAsset?: string;
+  toAmount?: string;
+  exchangeRate?: string;
+  priceImpact?: string;
   minReceived?: string;
   networkFee: string;
   slippageTolerancePct?: number;
-  routePath: PathStep[];
+  routePath?: PathStep[];
   // Actions
   onConfirm: () => void;
   onCancel?: () => void;
@@ -75,10 +87,16 @@ export function TransactionConfirmationModal({
   status,
   errorMessage,
   txHash,
+  swaps,
 }: TransactionConfirmationModalProps) {
   const [countdown, setCountdown] = useState(15);
 
-  const priceImpactValue = useMemo(() => parseFloat(priceImpact) || 0, [priceImpact]);
+  const priceImpactValue = useMemo(() => {
+    if (swaps && swaps.length > 0) {
+      return Math.max(...swaps.map(s => parseFloat(s.priceImpact) || 0));
+    }
+    return parseFloat(priceImpact || "0") || 0;
+  }, [priceImpact, swaps]);
   const isHighPriceImpact = priceImpactValue >= 2;
   const isSeverePriceImpact = priceImpactValue >= 5;
 
@@ -135,40 +153,77 @@ export function TransactionConfirmationModal({
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4 py-4">
-              {/* Swap Summary */}
-              <div className="p-4 rounded-lg bg-muted/30 border space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-muted-foreground">
-                    You Pay
-                  </span>
-                  <div className="text-right">
-                    <p className="text-lg font-bold">
-                      {fromAmount} {fromAsset}
-                    </p>
+            <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-1">
+              {swaps && swaps.length > 0 ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Batch Swaps ({swaps.length})
+                    </span>
+                    <Badge variant="outline" className="text-[10px]">Atomics enabled</Badge>
                   </div>
+                  {swaps.map((swap, i) => (
+                    <div key={i} className="p-3 rounded-lg bg-muted/30 border space-y-2 relative overflow-hidden">
+                       <div className="absolute top-0 right-0 p-1 opacity-10">
+                         <span className="text-4xl font-black italic">#{i+1}</span>
+                       </div>
+                       <div className="flex justify-between items-end relative z-10">
+                         <div>
+                           <p className="text-[10px] text-muted-foreground uppercase font-bold">Pay</p>
+                           <p className="font-bold">{swap.fromAmount} {swap.fromAsset}</p>
+                         </div>
+                         <div className="text-center pb-1">
+                           <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
+                         </div>
+                         <div className="text-right">
+                           <p className="text-[10px] text-muted-foreground uppercase font-bold">Receive</p>
+                           <p className="font-bold text-success">{swap.toAmount} {swap.toAsset}</p>
+                         </div>
+                       </div>
+                       <div className="pt-2 border-t border-border/40 flex justify-between items-center text-[10px] text-muted-foreground">
+                         <span>Rate: {swap.exchangeRate}</span>
+                         <span className={cn(parseFloat(swap.priceImpact) > 1 ? "text-destructive" : "text-success")}>
+                           Impact: {swap.priceImpact}
+                         </span>
+                       </div>
+                    </div>
+                  ))}
                 </div>
+              ) : (
+                /* Swap Summary */
+                <div className="p-4 rounded-lg bg-muted/30 border space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-muted-foreground">
+                      You Pay
+                    </span>
+                    <div className="text-right">
+                      <p className="text-lg font-bold">
+                        {fromAmount} {fromAsset}
+                      </p>
+                    </div>
+                  </div>
 
-                <div className="flex justify-center -my-2 relative z-10">
-                  <div className="bg-background border rounded-full p-1">
-                    <ArrowDown className="w-4 h-4 text-muted-foreground" />
+                  <div className="flex justify-center -my-2 relative z-10">
+                    <div className="bg-background border rounded-full p-1">
+                      <ArrowDown className="w-4 h-4 text-muted-foreground" />
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-muted-foreground">
-                    You Receive
-                  </span>
-                  <div className="text-right">
-                    <p className="text-lg font-bold text-success">
-                      ~{toAmount} {toAsset}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                      Estimated Minimum: {minReceivedToDisplay ?? "—"} {toAsset}
-                    </p>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-muted-foreground">
+                      You Receive
+                    </span>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-success">
+                        ~{toAmount} {toAsset}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                        Estimated Minimum: {minReceivedToDisplay ?? "—"} {toAsset}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Warnings Section */}
               {(isHighPriceImpact || isHighSlippage || isLowSlippage) && (
@@ -215,24 +270,28 @@ export function TransactionConfirmationModal({
 
               {/* Trade Details */}
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Rate</span>
-                  <span>
-                    1 {fromAsset} = {exchangeRate} {toAsset}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Price Impact</span>
-                  <span
-                    className={
-                      parseFloat(priceImpact) > 1
-                        ? "text-destructive font-medium"
-                        : "text-success font-medium"
-                    }
-                  >
-                    {priceImpact}
-                  </span>
-                </div>
+                {!swaps && (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Rate</span>
+                      <span>
+                        1 {fromAsset} = {exchangeRate} {toAsset}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Price Impact</span>
+                      <span
+                        className={
+                          parseFloat(priceImpact || "0") > 1
+                            ? "text-destructive font-medium"
+                            : "text-success font-medium"
+                        }
+                      >
+                        {priceImpact}
+                      </span>
+                    </div>
+                  </>
+                )}
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Slippage</span>
                   <span>
@@ -241,22 +300,26 @@ export function TransactionConfirmationModal({
                       : `${slippageTolerancePct}%`}
                   </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Minimum Received</span>
-                  <span>
-                    {minReceivedToDisplay ?? "—"} {toAsset}
-                  </span>
-                </div>
+                {!swaps && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Minimum Received</span>
+                    <span>
+                      {minReceivedToDisplay ?? "—"} {toAsset}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Network Fee</span>
                   <span>{networkFee} XLM</span>
                 </div>
-                <div className="flex flex-col gap-1 pt-2">
-                  <RouteVisualization
-                    path={routePath}
-                    className="border-none shadow-none bg-transparent p-0"
-                  />
-                </div>
+                {!swaps && routePath && (
+                  <div className="flex flex-col gap-1 pt-2">
+                    <RouteVisualization
+                      path={routePath}
+                      className="border-none shadow-none bg-transparent p-0"
+                    />
+                  </div>
+                )}
               </div>
               <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-950 dark:text-amber-100">
                 Demo mode: signing and submission are simulated — not yet on-chain.
@@ -265,7 +328,7 @@ export function TransactionConfirmationModal({
 
             <DialogFooter className="flex-col sm:flex-col gap-2">
               <Button onClick={onConfirm} className="w-full" size="lg">
-                Confirm Swap
+                {swaps && swaps.length > 0 ? "Confirm Batch Swaps" : "Confirm Swap"}
               </Button>
               <Button
                 type="button"
@@ -327,12 +390,20 @@ export function TransactionConfirmationModal({
                <CheckCircle2 className="w-16 h-16 text-success" />
             </div>
             <div>
-              <DialogTitle className="text-2xl mb-2">Swap Successful!</DialogTitle>
+              <DialogTitle className="text-2xl mb-2">
+                {swaps && swaps.length > 0 ? "Batch Successful!" : "Swap Successful!"}
+              </DialogTitle>
               <DialogDescription>
-                You received{" "}
-                <span className="font-bold text-foreground">
-                  {toAmount} {toAsset}
-                </span>
+                {swaps && swaps.length > 1 ? (
+                   <span>Processed {swaps.length} transactions in one atomic batch.</span>
+                ) : (
+                  <>
+                    You received{" "}
+                    <span className="font-bold text-foreground">
+                      {toAmount} {toAsset}
+                    </span>
+                  </>
+                )}
               </DialogDescription>
             </div>
             

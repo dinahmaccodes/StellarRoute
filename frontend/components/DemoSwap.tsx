@@ -23,13 +23,21 @@ import { useWallet } from "@/components/providers/wallet-provider";
 
 import type { PathStep, TradingPair } from "@/types";
 import { TransactionStatus } from "@/types/transaction";
-import { QUOTE_AUTO_REFRESH_INTERVAL_MS } from "@/lib/quote-stale";
+
+interface BatchSwapItem {
+  fromAsset: string;
+  fromAmount: string;
+  toAsset: string;
+  toAmount: string;
+  exchangeRate: string;
+  priceImpact: string;
+  routePath: PathStep[];
+}
 import {
   formatMaxAmountForInput,
   maxDecimalsForSellAsset,
   parseSellAmount,
 } from "@/lib/amount-input";
-
 import { QUOTE_AUTO_REFRESH_INTERVAL_MS } from "@/lib/quote-stale";
 
 const MOCK_WALLET = "GBSU...XYZ9";
@@ -60,6 +68,7 @@ export function DemoSwap() {
   const [sellRaw, setSellRaw] = useState<string>("");
   const [slippage, setSlippage] = useState<number | null>(0.5);
 
+  const [batch, setBatch] = useState<BatchSwapItem[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [txStatus, setTxStatus] = useState<TransactionStatus | "review">(
     "review",
@@ -109,20 +118,8 @@ export function DemoSwap() {
     setAutoRefreshEnabled,
   } = useQuoteRefresh(quoteBase, quoteCounter, numericForQuote, "sell");
 
-  const refreshDisabled = quoteLoading || manualRefreshCoolingDown || !numericForQuote;
-
-  const {
-    refresh,
-    refreshDisabled,
-    autoRefreshEnabled,
-    setAutoRefreshEnabled,
-  } = useQuoteRefresh({
-    baseAsset: quoteBase,
-    counterAsset: quoteCounter,
-    amount: numericForQuote,
-    side: "sell",
-    enabled: Boolean(selectedPair && numericForQuote !== undefined),
-  });
+  const refreshDisabled =
+    quoteLoading || manualRefreshCoolingDown || !numericForQuote;
 
   const amountInputInvalid =
     sellRaw.trim() !== "" &&
@@ -138,14 +135,32 @@ export function DemoSwap() {
     setSellRaw(formatMaxAmountForInput(stubSpendableBalance, sellMaxDecimals));
   }, [isConnected, stubSpendableBalance, sellMaxDecimals]);
 
-<<<<<<< HEAD
-=======
+  const handleAddToBatch = () => {
+    if (parseResult.status !== "ok" || !selectedPair || !quote) {
+      toast.error("Valid quote required to add to batch.");
+      return;
+    }
 
+    const newItem: BatchSwapItem = {
+      fromAsset: selectedPair.base,
+      fromAmount: parseResult.normalized,
+      toAsset: selectedPair.counter,
+      toAmount: quote.total,
+      exchangeRate: quote.price,
+      priceImpact: priceImpactDisplay,
+      routePath: quote.path,
+    };
 
->>>>>>> 3dd66dcbab93f5d07cae58afda851a9fdc7ebb35
+    setBatch((prev) => [...prev, newItem]);
+    setSellRaw("");
+    toast.success("Added to batch", {
+      description: `${newItem.fromAmount} ${newItem.fromAsset} → ${newItem.toAmount} ${newItem.toAsset}`,
+    });
+  };
+
   const handleSwapClick = () => {
-    if (parseResult.status !== "ok" || !selectedPair) {
-      toast.error("Enter a valid sell amount and select a pair.");
+    if (batch.length === 0 && (parseResult.status !== "ok" || !selectedPair)) {
+      toast.error("Enter a valid sell amount or add items to batch.");
       return;
     }
 
@@ -170,68 +185,35 @@ export function DemoSwap() {
         setTxStatus("processing");
 
         setTimeout(() => {
-          const isSuccess = Math.random() > 0.2;
-          const fromAmt =
-            parseResult.status === "ok" ? parseResult.normalized : "0";
-          const toAmt = quote?.total ?? "10.5";
-          const resolvedPriceImpact =
-            quote?.priceImpact != null ? `${quote.priceImpact}%` : "—";
+          const isSuccess = Math.random() > 0.1; // Slightly better success rate for batches
 
           if (isSuccess) {
             const mockHash = "mock_tx_" + Math.random().toString(36).substring(7);
             setTxHash(mockHash);
             setTxStatus("success");
 
-            toast.success("Transaction Successful!", {
-              description: `Swapped ${fromAmt} ${selectedPair?.base ?? ""} for ${toAmt} ${selectedPair?.counter ?? ""}`,
-            });
-
-            addTransaction({
-              id: mockHash,
-              timestamp: Date.now(),
-              fromAsset: selectedPair?.base ?? "XLM",
-              fromAmount: fromAmt,
-              toAsset: selectedPair?.counter ?? "USDC",
-              toAmount: toAmt,
-              exchangeRate: quote?.price ?? "0.105",
-              priceImpact: resolvedPriceImpact,
-              minReceived: toAmt,
-              networkFee: "0.00001",
-              routePath: quote?.path?.length ? quote.path : mockRoute,
-              status: "success",
-              hash: mockHash,
-              walletAddress: MOCK_WALLET,
-            });
+            if (batch.length > 0) {
+              toast.success("Batch Successful!", {
+                description: `Executed ${batch.length} swaps in one atomic transaction.`,
+              });
+              
+              // Clear batch on success
+              setBatch([]);
+            } else {
+              const fromAmt = parseResult.status === "ok" ? parseResult.normalized : "0";
+              const toAmt = quote?.total ?? "0";
+              toast.success("Transaction Successful!", {
+                description: `Swapped ${fromAmt} ${selectedPair?.base ?? ""} for ${toAmt} ${selectedPair?.counter ?? ""}`,
+              });
+            }
           } else {
             setTxStatus("failed");
-            setErrorMessage(
-              "Insufficient balance or network congestion. Please try again.",
-            );
-
-            toast.error("Transaction Failed", {
-              description: "Insufficient balance or network congestion.",
-            });
-
-            addTransaction({
-              id: "failed_" + Date.now(),
-              timestamp: Date.now(),
-              fromAsset: selectedPair?.base ?? "XLM",
-              fromAmount: fromAmt,
-              toAsset: selectedPair?.counter ?? "USDC",
-              toAmount: toAmt,
-              exchangeRate: quote?.price ?? "0.105",
-              priceImpact: resolvedPriceImpact,
-              minReceived: toAmt,
-              networkFee: "0.00001",
-              routePath: quote?.path?.length ? quote.path : mockRoute,
-              status: "failed",
-              errorMessage: "Insufficient balance.",
-              walletAddress: MOCK_WALLET,
-            });
+            setErrorMessage("Atomic batch failed. Please check liquidity or slippage and try again.");
+            toast.error("Transaction Failed");
           }
-        }, 2000);
-      }, 1000);
-    }, 2000);
+        }, 1500);
+      }, 800);
+    }, 1200);
   };
 
   const handleCancel = () => {
@@ -474,18 +456,42 @@ export function DemoSwap() {
           </label>
         </div>
 
-        <Button
-          className="h-12 w-full text-lg"
-          onClick={handleSwapClick}
-          disabled={
-            !selectedPair ||
-            parseResult.status !== "ok" ||
-            slippage === null ||
-            slippageOutOfBounds
-          }
-        >
-          Review Swap
-        </Button>
+        <div className="flex gap-3">
+          <Button
+             type="button"
+             variant="outline"
+             className="flex-1 h-12"
+             onClick={handleAddToBatch}
+             disabled={!selectedPair || parseResult.status !== "ok" || quoteLoading}
+          >
+            Add to Batch
+          </Button>
+          <Button
+            className="h-12 flex-[2] text-lg"
+            onClick={handleSwapClick}
+            disabled={
+              (batch.length === 0 && !selectedPair) ||
+              (batch.length === 0 && parseResult.status !== "ok") ||
+              slippage === null ||
+              slippageOutOfBounds
+            }
+          >
+            {batch.length > 0 ? `Review Batch (${batch.length})` : "Review Swap"}
+          </Button>
+        </div>
+        {batch.length > 0 && (
+          <div className="flex justify-between items-center px-1">
+             <span className="text-xs text-muted-foreground">
+               {batch.length} items in current batch
+             </span>
+             <button 
+               onClick={() => setBatch([])}
+               className="text-xs text-destructive hover:underline"
+             >
+               Clear Batch
+             </button>
+          </div>
+        )}
       </div>
 
       <TransactionConfirmationModal
@@ -502,6 +508,7 @@ export function DemoSwap() {
         slippageTolerancePct={slippage ?? 0}
         networkFee="0.00001"
         routePath={quote?.path?.length ? quote.path : mockRoute}
+        swaps={batch}
         onConfirm={handleConfirm}
         onCancel={handleCancel}
         status={txStatus}
