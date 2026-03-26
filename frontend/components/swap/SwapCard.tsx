@@ -95,7 +95,15 @@ export function SwapCard() {
               slippage={slippage}
               isLoading={isLoading}
             />
-            <QuoteSummary rate="1 XLM ≈ 0.98 USDC" fee="0.01 XLM" priceImpact="< 0.1%" />
+            <QuoteSummary 
+              fromAmount={1}
+              fromSymbol="XLM" 
+              toAmount={parseFloat(payAmount) * 0.98}
+              toSymbol="USDC"
+              feeAmount={0.01}
+              feeSymbol="XLM"
+              priceImpactValue={0.001}
+            />
             <RouteDisplay amountOut={receiveAmount} />
           </>
         )}
