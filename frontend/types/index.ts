@@ -59,7 +59,12 @@ export interface PriceQuote {
   total: string;
   quote_type: QuoteType;
   path: PathStep[];
+<<<<<<< HEAD
   /** Unix timestamp (ms) */
+=======
+  priceImpact?: string;
+  /** Unix timestamp (seconds) */
+>>>>>>> origin/main
   timestamp: number;
   /** Unix timestamp (ms) when this quote expires */
   expires_at?: number;

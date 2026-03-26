@@ -109,6 +109,7 @@ export interface PriceQuote {
   source_timestamp?: number;
   /** Time-to-live in seconds for client-side staleness detection */
   ttl_seconds?: number;
+<<<<<<< HEAD
   /** Estimated price impact percentage */
   price_impact?: string;
 }
@@ -135,6 +136,18 @@ export interface BatchQuoteResponse {
   quotes: PriceQuote[];
   /** Total number of quotes successfully fetched. */
   total: number;
+=======
+  /** Rationale for quote venue selection. */
+  rationale?: {
+    strategy: string;
+    compared_venues: Array<{
+      source: string;
+      price: string;
+      available_amount: string;
+      executable: boolean;
+    }>;
+  };
+>>>>>>> origin/main
 }
 
 /**
@@ -198,7 +211,24 @@ export interface HealthStatus {
 }
 
 /**
- * Wire format of the API error body.
+ * Optimal trading route without pricing details.
+ * Response from `GET /api/v1/route/{base}/{quote}`.
+ */
+export interface RouteResponse {
+  base_asset: Asset;
+  quote_asset: Asset;
+  /** Input amount being traded. */
+  amount: string;
+  /** Execution steps for this trade. */
+  path: PathStep[];
+  /** Slippage tolerance in basis points. */
+  slippage_bps: number;
+  /** Unix timestamp of the route calculation. */
+  timestamp: number;
+}
+
+/**
+ * Error response from the StellarRoute API.
  */
 export interface ApiError {
   /** Machine-readable error code, e.g. `"not_found"`. */

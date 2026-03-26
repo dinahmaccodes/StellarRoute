@@ -3,6 +3,7 @@
 use crate::error::{Result, RoutingError};
 use crate::impact::{AmmQuoteCalculator, OrderbookImpactCalculator};
 use crate::pathfinder::{LiquidityEdge, Pathfinder, PathfinderConfig, SwapPath};
+use crate::policy::RoutingPolicy;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::Instant;
@@ -143,7 +144,10 @@ pub struct OptimizerDiagnostics {
 /// Hybrid route optimizer with configurable policies
 pub struct HybridOptimizer {
     pathfinder: Pathfinder,
+    /// Wired in when hop simulation uses shared calculators (currently placeholder paths use inline fees).
+    #[allow(dead_code)]
     amm_calculator: AmmQuoteCalculator,
+    #[allow(dead_code)]
     orderbook_calculator: OrderbookImpactCalculator,
     policies: HashMap<String, OptimizerPolicy>,
     active_policy: String,
@@ -198,12 +202,15 @@ impl HybridOptimizer {
         to: &str,
         edges: &[LiquidityEdge],
         amount_in: i128,
+        routing_policy: &RoutingPolicy,
     ) -> Result<OptimizerDiagnostics> {
         let start_time = Instant::now();
         let policy = self.active_policy();
 
         // Find all possible paths
-        let paths = self.pathfinder.find_paths(from, to, edges, amount_in)?;
+        let paths = self
+            .pathfinder
+            .find_paths(from, to, edges, amount_in, routing_policy)?;
 
         if paths.is_empty() {
             return Err(RoutingError::NoRoute(from.to_string(), to.to_string()));
@@ -321,6 +328,7 @@ impl HybridOptimizer {
         to: &str,
         edges: &[LiquidityEdge],
         amount_in: i128,
+        routing_policy: &RoutingPolicy,
     ) -> Result<Vec<(String, OptimizerDiagnostics)>> {
         let mut results = Vec::new();
         let original_policy = self.active_policy.clone();
@@ -328,7 +336,8 @@ impl HybridOptimizer {
 
         for env_name in policy_names {
             self.set_active_policy(&env_name)?;
-            let diagnostics = self.find_optimal_routes(from, to, edges, amount_in)?;
+            let diagnostics =
+                self.find_optimal_routes(from, to, edges, amount_in, routing_policy)?;
             results.push((env_name.clone(), diagnostics));
         }
 
@@ -353,10 +362,12 @@ mod tests {
         let valid_policy = OptimizerPolicy::default();
         assert!(valid_policy.validate().is_ok());
 
-        let mut invalid_policy = OptimizerPolicy::default();
-        invalid_policy.output_weight = 0.8;
-        invalid_policy.impact_weight = 0.8;
-        invalid_policy.latency_weight = 0.2; // Sum = 1.8
+        let invalid_policy = OptimizerPolicy {
+            output_weight: 0.8,
+            impact_weight: 0.8,
+            latency_weight: 0.2, // Sum = 1.8
+            ..Default::default()
+        };
         assert!(invalid_policy.validate().is_err());
     }
 

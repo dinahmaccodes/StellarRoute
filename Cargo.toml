@@ -64,6 +64,7 @@ redis = { version = "0.24", features = ["tokio-comp", "connection-manager"] }
 
 # Concurrency utilities
 parking_lot = "0.12"
+proptest = "1.5"
 
 # Clippy and formatting
 [workspace.lints.clippy]

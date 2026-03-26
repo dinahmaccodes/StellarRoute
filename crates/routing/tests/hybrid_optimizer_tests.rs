@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 use stellarroute_routing::{
-    HybridOptimizer, LiquidityEdge, OptimizerPolicy, PathfinderConfig, PolicyPresets, RouteMetrics,
+    HybridOptimizer, LiquidityEdge, OptimizerPolicy, PathfinderConfig, PolicyPresets, RoutingPolicy,
 };
 
 fn create_test_graph() -> Vec<LiquidityEdge> {
@@ -55,6 +55,10 @@ fn create_test_graph() -> Vec<LiquidityEdge> {
     ]
 }
 
+fn default_routing_policy() -> RoutingPolicy {
+    RoutingPolicy::default()
+}
+
 #[test]
 fn test_hybrid_optimizer_basic_functionality() {
     let edges = create_test_graph();
@@ -65,6 +69,7 @@ fn test_hybrid_optimizer_basic_functionality() {
         "BTC",
         &edges,
         100_000_000, // 10 XLM
+        &default_routing_policy(),
     );
 
     assert!(result.is_ok());
@@ -96,7 +101,7 @@ fn test_policy_comparison() {
         optimizer.set_active_policy(name).unwrap();
 
         let result = optimizer
-            .find_optimal_routes("XLM", "BTC", &edges, 100_000_000)
+            .find_optimal_routes("XLM", "BTC", &edges, 100_000_000, &default_routing_policy())
             .unwrap();
         results.insert(name, result.metrics.clone());
     }
@@ -119,20 +124,22 @@ fn test_deterministic_behavior() {
 
     // Run same query multiple times
     let result1 = optimizer
-        .find_optimal_routes("XLM", "BTC", &edges, 100_000_000)
+        .find_optimal_routes("XLM", "BTC", &edges, 100_000_000, &default_routing_policy())
         .unwrap();
     let result2 = optimizer
-        .find_optimal_routes("XLM", "BTC", &edges, 100_000_000)
+        .find_optimal_routes("XLM", "BTC", &edges, 100_000_000, &default_routing_policy())
         .unwrap();
     let result3 = optimizer
-        .find_optimal_routes("XLM", "BTC", &edges, 100_000_000)
+        .find_optimal_routes("XLM", "BTC", &edges, 100_000_000, &default_routing_policy())
         .unwrap();
 
     // Results should be identical
+    // Output path is deterministic; score includes `compute_time_us` so it varies per call.
     assert_eq!(result1.metrics.output_amount, result2.metrics.output_amount);
     assert_eq!(result2.metrics.output_amount, result3.metrics.output_amount);
-    assert_eq!(result1.metrics.score, result2.metrics.score);
-    assert_eq!(result2.metrics.score, result3.metrics.score);
+    assert_eq!(result1.metrics.impact_bps, result2.metrics.impact_bps);
+    assert_eq!(result2.metrics.impact_bps, result3.metrics.impact_bps);
+    assert_eq!(result1.metrics.hop_count, result2.metrics.hop_count);
 }
 
 #[test]
@@ -153,7 +160,8 @@ fn test_policy_constraints() {
     optimizer.add_policy(restrictive_policy).unwrap();
     optimizer.set_active_policy("restrictive").unwrap();
 
-    let result = optimizer.find_optimal_routes("XLM", "BTC", &edges, 100_000_000);
+    let result =
+        optimizer.find_optimal_routes("XLM", "BTC", &edges, 100_000_000, &default_routing_policy());
 
     // Should either succeed with constrained route or fail gracefully
     match result {
@@ -185,7 +193,7 @@ fn test_custom_policy() {
     optimizer.set_active_policy("latency_first").unwrap();
 
     let result = optimizer
-        .find_optimal_routes("XLM", "BTC", &edges, 100_000_000)
+        .find_optimal_routes("XLM", "BTC", &edges, 100_000_000, &default_routing_policy())
         .unwrap();
 
     // Should find a route quickly
@@ -199,7 +207,7 @@ fn test_benchmark_all_policies() {
     let mut optimizer = HybridOptimizer::new(PathfinderConfig::default());
 
     let results = optimizer
-        .benchmark_policies("XLM", "BTC", &edges, 100_000_000)
+        .benchmark_policies("XLM", "BTC", &edges, 100_000_000, &default_routing_policy())
         .unwrap();
 
     // Should have results for all default policies
@@ -219,14 +227,12 @@ fn test_route_quality_metrics() {
     let optimizer = HybridOptimizer::new(PathfinderConfig::default());
 
     let result = optimizer
-        .find_optimal_routes("XLM", "BTC", &edges, 100_000_000)
+        .find_optimal_routes("XLM", "BTC", &edges, 100_000_000, &default_routing_policy())
         .unwrap();
     let metrics = result.metrics;
 
     // Validate metrics
     assert!(metrics.output_amount > 0);
-    assert!(metrics.impact_bps >= 0);
-    assert!(metrics.compute_time_us >= 0);
     assert!(metrics.hop_count > 0);
     assert!(metrics.score > 0.0);
     assert!(metrics.score <= 1.0);
@@ -243,7 +249,13 @@ fn test_no_route_available() {
     let optimizer = HybridOptimizer::new(PathfinderConfig::default());
 
     // Request route to non-existent asset
-    let result = optimizer.find_optimal_routes("XLM", "NONEXISTENT", &edges, 100_000_000);
+    let result = optimizer.find_optimal_routes(
+        "XLM",
+        "NONEXISTENT",
+        &edges,
+        100_000_000,
+        &default_routing_policy(),
+    );
 
     assert!(result.is_err());
 }
@@ -259,7 +271,13 @@ fn test_insufficient_liquidity() {
 
     let optimizer = HybridOptimizer::new(PathfinderConfig::default());
 
-    let result = optimizer.find_optimal_routes("XLM", "BTC", &small_edges, 100_000_000); // Large amount
+    let result = optimizer.find_optimal_routes(
+        "XLM",
+        "BTC",
+        &small_edges,
+        100_000_000,
+        &default_routing_policy(),
+    ); // Large amount
 
     // Should fail due to insufficient liquidity
     assert!(result.is_err());
@@ -272,12 +290,12 @@ fn test_multi_hop_vs_direct() {
 
     // Test direct XLM -> BTC route
     let direct_result = optimizer
-        .find_optimal_routes("XLM", "BTC", &edges, 50_000_000)
+        .find_optimal_routes("XLM", "BTC", &edges, 50_000_000, &default_routing_policy())
         .unwrap();
 
     // Test multi-hop XLM -> USDC -> BTC route
     let multihop_result = optimizer
-        .find_optimal_routes("XLM", "BTC", &edges, 50_000_000)
+        .find_optimal_routes("XLM", "BTC", &edges, 50_000_000, &default_routing_policy())
         .unwrap();
 
     // Both should find routes, but potentially different ones
@@ -296,15 +314,19 @@ fn test_policy_validation() {
     assert!(valid_policy.validate().is_ok());
 
     // Invalid: weights don't sum to 1.0
-    let mut invalid_policy = OptimizerPolicy::default();
-    invalid_policy.output_weight = 0.8;
-    invalid_policy.impact_weight = 0.5;
-    invalid_policy.latency_weight = 0.1; // Sum = 1.4
+    let invalid_policy = OptimizerPolicy {
+        output_weight: 0.8,
+        impact_weight: 0.5,
+        latency_weight: 0.1, // Sum = 1.4
+        ..Default::default()
+    };
     assert!(invalid_policy.validate().is_err());
 
     // Invalid: negative weight
-    let mut negative_policy = OptimizerPolicy::default();
-    negative_policy.output_weight = -0.1;
+    let negative_policy = OptimizerPolicy {
+        output_weight: -0.1,
+        ..Default::default()
+    };
     assert!(negative_policy.validate().is_err());
 }
 
