@@ -468,107 +468,97 @@
                 "bytes": "0000000000000000000000000000000000000000000000000000000000000003"
               },
               {
-                "symbol": "get_quote"
+                "symbol": "validate_route"
               }
             ],
             "data": {
-              "vec": [
+              "map": [
                 {
-                  "i128": {
-                    "hi": -1,
-                    "lo": 18446744073709551615
+                  "key": {
+                    "symbol": "estimated_output"
+                  },
+                  "val": {
+                    "i128": {
+                      "hi": 0,
+                      "lo": 0
+                    }
                   }
                 },
                 {
-                  "map": [
-                    {
-                      "key": {
-                        "symbol": "estimated_output"
-                      },
-                      "val": {
-                        "i128": {
-                          "hi": 0,
-                          "lo": 0
-                        }
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "expires_at"
-                      },
-                      "val": {
-                        "u64": 99999
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "hops"
-                      },
-                      "val": {
-                        "vec": [
+                  "key": {
+                    "symbol": "expires_at"
+                  },
+                  "val": {
+                    "u64": 99999
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "hops"
+                  },
+                  "val": {
+                    "vec": [
+                      {
+                        "map": [
                           {
-                            "map": [
-                              {
-                                "key": {
-                                  "symbol": "destination"
-                                },
-                                "val": {
-                                  "vec": [
-                                    {
-                                      "symbol": "Native"
-                                    }
-                                  ]
+                            "key": {
+                              "symbol": "destination"
+                            },
+                            "val": {
+                              "vec": [
+                                {
+                                  "symbol": "Native"
                                 }
-                              },
-                              {
-                                "key": {
-                                  "symbol": "pool"
-                                },
-                                "val": {
-                                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
+                              ]
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "pool"
+                            },
+                            "val": {
+                              "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "pool_type"
+                            },
+                            "val": {
+                              "vec": [
+                                {
+                                  "symbol": "AmmConstProd"
                                 }
-                              },
-                              {
-                                "key": {
-                                  "symbol": "pool_type"
-                                },
-                                "val": {
-                                  "vec": [
-                                    {
-                                      "symbol": "AmmConstProd"
-                                    }
-                                  ]
+                              ]
+                            }
+                          },
+                          {
+                            "key": {
+                              "symbol": "source"
+                            },
+                            "val": {
+                              "vec": [
+                                {
+                                  "symbol": "Native"
                                 }
-                              },
-                              {
-                                "key": {
-                                  "symbol": "source"
-                                },
-                                "val": {
-                                  "vec": [
-                                    {
-                                      "symbol": "Native"
-                                    }
-                                  ]
-                                }
-                              }
-                            ]
+                              ]
+                            }
                           }
                         ]
                       }
-                    },
-                    {
-                      "key": {
-                        "symbol": "min_output"
-                      },
-                      "val": {
-                        "i128": {
-                          "hi": 0,
-                          "lo": 0
-                        }
-                      }
+                    ]
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "min_output"
+                  },
+                  "val": {
+                    "i128": {
+                      "hi": 0,
+                      "lo": 0
                     }
-                  ]
+                  }
                 }
               ]
             }
@@ -589,172 +579,10 @@
                 "symbol": "fn_return"
               },
               {
-                "symbol": "get_quote"
+                "symbol": "validate_route"
               }
             ],
-            "data": {
-              "error": {
-                "contract": 20
-              }
-            }
-          }
-        }
-      },
-      "failed_call": true
-    },
-    {
-      "event": {
-        "ext": "v0",
-        "contract_id": "0000000000000000000000000000000000000000000000000000000000000003",
-        "type_": "diagnostic",
-        "body": {
-          "v0": {
-            "topics": [
-              {
-                "symbol": "error"
-              },
-              {
-                "error": {
-                  "contract": 20
-                }
-              }
-            ],
-            "data": {
-              "string": "escalating Ok(ScErrorType::Contract) frame-exit to Err"
-            }
-          }
-        }
-      },
-      "failed_call": true
-    },
-    {
-      "event": {
-        "ext": "v0",
-        "contract_id": null,
-        "type_": "diagnostic",
-        "body": {
-          "v0": {
-            "topics": [
-              {
-                "symbol": "error"
-              },
-              {
-                "error": {
-                  "contract": 20
-                }
-              }
-            ],
-            "data": {
-              "vec": [
-                {
-                  "string": "contract try_call failed"
-                },
-                {
-                  "symbol": "get_quote"
-                },
-                {
-                  "vec": [
-                    {
-                      "i128": {
-                        "hi": -1,
-                        "lo": 18446744073709551615
-                      }
-                    },
-                    {
-                      "map": [
-                        {
-                          "key": {
-                            "symbol": "estimated_output"
-                          },
-                          "val": {
-                            "i128": {
-                              "hi": 0,
-                              "lo": 0
-                            }
-                          }
-                        },
-                        {
-                          "key": {
-                            "symbol": "expires_at"
-                          },
-                          "val": {
-                            "u64": 99999
-                          }
-                        },
-                        {
-                          "key": {
-                            "symbol": "hops"
-                          },
-                          "val": {
-                            "vec": [
-                              {
-                                "map": [
-                                  {
-                                    "key": {
-                                      "symbol": "destination"
-                                    },
-                                    "val": {
-                                      "vec": [
-                                        {
-                                          "symbol": "Native"
-                                        }
-                                      ]
-                                    }
-                                  },
-                                  {
-                                    "key": {
-                                      "symbol": "pool"
-                                    },
-                                    "val": {
-                                      "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
-                                    }
-                                  },
-                                  {
-                                    "key": {
-                                      "symbol": "pool_type"
-                                    },
-                                    "val": {
-                                      "vec": [
-                                        {
-                                          "symbol": "AmmConstProd"
-                                        }
-                                      ]
-                                    }
-                                  },
-                                  {
-                                    "key": {
-                                      "symbol": "source"
-                                    },
-                                    "val": {
-                                      "vec": [
-                                        {
-                                          "symbol": "Native"
-                                        }
-                                      ]
-                                    }
-                                  }
-                                ]
-                              }
-                            ]
-                          }
-                        },
-                        {
-                          "key": {
-                            "symbol": "min_output"
-                          },
-                          "val": {
-                            "i128": {
-                              "hi": 0,
-                              "lo": 0
-                            }
-                          }
-                        }
-                      ]
-                    }
-                  ]
-                }
-              ]
-            }
+            "data": "void"
           }
         }
       },

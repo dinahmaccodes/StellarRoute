@@ -241,58 +241,48 @@
                 "bytes": "0000000000000000000000000000000000000000000000000000000000000003"
               },
               {
-                "symbol": "get_quote"
+                "symbol": "validate_route"
               }
             ],
             "data": {
-              "vec": [
+              "map": [
                 {
-                  "i128": {
-                    "hi": 0,
-                    "lo": 1000
+                  "key": {
+                    "symbol": "estimated_output"
+                  },
+                  "val": {
+                    "i128": {
+                      "hi": 0,
+                      "lo": 0
+                    }
                   }
                 },
                 {
-                  "map": [
-                    {
-                      "key": {
-                        "symbol": "estimated_output"
-                      },
-                      "val": {
-                        "i128": {
-                          "hi": 0,
-                          "lo": 0
-                        }
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "expires_at"
-                      },
-                      "val": {
-                        "u64": 99999
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "hops"
-                      },
-                      "val": {
-                        "vec": []
-                      }
-                    },
-                    {
-                      "key": {
-                        "symbol": "min_output"
-                      },
-                      "val": {
-                        "i128": {
-                          "hi": 0,
-                          "lo": 0
-                        }
-                      }
+                  "key": {
+                    "symbol": "expires_at"
+                  },
+                  "val": {
+                    "u64": 99999
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "hops"
+                  },
+                  "val": {
+                    "vec": []
+                  }
+                },
+                {
+                  "key": {
+                    "symbol": "min_output"
+                  },
+                  "val": {
+                    "i128": {
+                      "hi": 0,
+                      "lo": 0
                     }
-                  ]
+                  }
                 }
               ]
             }
@@ -313,7 +303,7 @@
                 "symbol": "fn_return"
               },
               {
-                "symbol": "get_quote"
+                "symbol": "validate_route"
               }
             ],
             "data": {
@@ -374,16 +364,10 @@
                   "string": "contract try_call failed"
                 },
                 {
-                  "symbol": "get_quote"
+                  "symbol": "validate_route"
                 },
                 {
                   "vec": [
-                    {
-                      "i128": {
-                        "hi": 0,
-                        "lo": 1000
-                      }
-                    },
                     {
                       "map": [
                         {
