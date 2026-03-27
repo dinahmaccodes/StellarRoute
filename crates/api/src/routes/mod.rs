@@ -9,6 +9,7 @@ pub mod quote;
 pub mod replay;
 
 pub mod ws;
+pub mod routes_endpoint;
 
 
 use axum::{routing::{get, post}, Router};

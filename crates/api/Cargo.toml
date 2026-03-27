@@ -43,6 +43,7 @@ utoipa-swagger-ui = { version = "6", features = ["axum"] }
 
 # Concurrency utilities
 parking_lot = "0.12"
+arc-swap = { workspace = true }
 
 # CLI argument parsing
 clap = { version = "4", features = ["derive"] }

@@ -204,6 +204,8 @@ async fn broadcaster_loop(
                     source_timestamp: None,
                     ttl_seconds: None,
                     rationale: Some(rationale),
+                    exclusion_diagnostics: None,
+                    data_freshness: None,
                 };
 
                 let msg = ServerMessage::now(ServerPayload::QuoteUpdate {

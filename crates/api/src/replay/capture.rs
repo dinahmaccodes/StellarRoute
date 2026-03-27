@@ -106,7 +106,7 @@ impl CaptureHook {
         };
 
         // Redact synchronously before handing off to the async task.
-        self.redactor.redact(&mut artifact);
+        Redactor::redact(&mut artifact);
 
         let db = self.db.clone();
         let artifact_id = artifact.id;
@@ -259,7 +259,7 @@ mod tests {
             original_output,
         };
 
-        Redactor.redact(&mut artifact);
+        Redactor::redact(&mut artifact);
 
         assert_eq!(artifact.schema_version, CURRENT_SCHEMA_VERSION);
         assert_eq!(artifact.incident_id.as_deref(), Some("INC-001"));
