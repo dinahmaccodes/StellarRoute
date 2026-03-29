@@ -1,6 +1,22 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { SettingsProvider } from "@/components/providers/settings-provider";
 import { SwapCard } from "./SwapCard";
+
+vi.mock("next-themes", () => ({
+  useTheme: () => ({
+    theme: "light",
+    setTheme: vi.fn(),
+  }),
+}));
+
+function renderSwapCard() {
+  return render(
+    <SettingsProvider>
+      <SwapCard />
+    </SettingsProvider>,
+  );
+}
 
 function setNavigatorOnline(value: boolean) {
   Object.defineProperty(window.navigator, "onLine", {
@@ -21,7 +37,7 @@ describe("SwapCard network resilience", () => {
 
   it("shows offline state clearly and blocks submission while disconnected", async () => {
     setNavigatorOnline(false);
-    render(<SwapCard />);
+    renderSwapCard();
 
     await screen.findByText(/you're offline/i);
 
@@ -40,7 +56,7 @@ describe("SwapCard network resilience", () => {
 
   it("automatically recovers quotes after reconnecting", async () => {
     setNavigatorOnline(false);
-    render(<SwapCard />);
+    renderSwapCard();
 
     await screen.findByLabelText("Pay amount");
     fireEvent.change(screen.getByLabelText("Pay amount"), {

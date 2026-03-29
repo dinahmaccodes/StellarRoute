@@ -36,7 +36,10 @@ export function RouteDisplay({
         </div>
         <div className="flex items-center gap-2">
           <ConfidenceIndicator score={confidenceScore} volatility={volatility} />
-          <Badge variant="secondary" className="text-xs bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 border-emerald-500/20 transition-colors">
+          <Badge
+            variant="secondary"
+            className="border-success/20 bg-success/10 text-xs text-success transition-colors hover:bg-success/15"
+          >
             Optimal
           </Badge>
           {/* Task 5.3: "Show route details" toggle as <button> with 44×44px touch target */}
@@ -45,7 +48,7 @@ export function RouteDisplay({
             onClick={() => setShowDetails((prev) => !prev)}
             aria-expanded={showDetails}
             aria-label="Show route details"
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-muted/50 focus:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all duration-150 active:scale-95"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md transition-all duration-150 hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-95"
           >
             <ChevronDown
               className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${showDetails ? "rotate-180" : ""}`}
@@ -81,7 +84,7 @@ export function RouteDisplay({
         <h4 className="text-[11px] font-medium text-muted-foreground mb-2 uppercase tracking-wider">Alternative Routes</h4>
         <button
           type="button"
-          className="w-full flex flex-wrap items-center justify-between opacity-60 hover:opacity-100 focus:opacity-100 transition-all duration-150 p-1 -mx-1 rounded hover:bg-muted/50 focus:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/20 gap-1 text-left active:scale-[0.99]"
+          className="w-full flex flex-wrap items-center justify-between gap-1 rounded p-1 -mx-1 text-left opacity-60 transition-all duration-150 hover:bg-muted/50 hover:opacity-100 focus-visible:bg-muted/50 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-[0.99]"
           onClick={() => console.log("Selecting alternative route...")}
         >
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">

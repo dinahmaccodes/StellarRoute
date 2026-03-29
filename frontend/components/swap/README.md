@@ -129,6 +129,14 @@ npm test TokenPairSelector
 - Clear error messaging
 - Semantic HTML structure
 
+## Theme Parity Checklist
+
+- `PairSelector`: amount inputs now keep a visible `focus-visible` ring and the receive token pill uses theme tokens instead of a hardcoded blue.
+- `SimulationPanel`: error, info, warning, and low-impact states now use `destructive`, `primary`, `warning`, and `success` tokens.
+- `ConfidenceIndicator`: confidence levels and volatility notices now use semantic theme tokens instead of fixed emerald/amber/red/orange values.
+- `RouteDisplay`: success badge and route action controls use theme-safe colors and consistent `focus-visible` rings in both light and dark themes.
+- `Settings` page: existing controls were checked and already rely on shared UI primitives (`Input`, `Select`, `Button`) for theme-aware borders and focus treatment.
+
 ## Browser Support
 
 Works in all modern browsers that support:

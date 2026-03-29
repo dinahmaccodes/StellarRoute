@@ -66,12 +66,12 @@ export function SimulationPanel({
 
   if (error) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-3">
-        <div className="flex items-center gap-2 text-red-600">
+      <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 space-y-3 text-destructive">
+        <div className="flex items-center gap-2">
           <AlertTriangle className="h-4 w-4" />
           <span className="text-sm font-medium">Simulation Error</span>
         </div>
-        <p className="text-sm text-red-600">{error}</p>
+        <p className="text-sm">{error}</p>
       </div>
     );
   }
@@ -117,9 +117,9 @@ export function SimulationPanel({
           </Badge>
         </div>
         {isHighImpact && (
-          <div className="flex items-center gap-1 text-amber-600">
+          <div className="flex items-center gap-1 text-warning">
             <TrendingUp className="h-3 w-3" />
-            <span className="text-xs font-medium">High Impact</span>
+            <span className="text-xs font-medium text-warning">High Impact</span>
           </div>
         )}
       </div>
@@ -137,12 +137,12 @@ export function SimulationPanel({
         <div className="flex justify-between items-center py-2 border-b border-border/30">
           <div className="flex items-center gap-1">
             <span className="text-sm text-muted-foreground">Min Received</span>
-            <div className="h-3 w-3 rounded-full bg-blue-500/20 flex items-center justify-center">
-              <TrendingDown className="h-2 w-2 text-blue-600" />
+            <div className="flex h-3 w-3 items-center justify-center rounded-full bg-primary/10">
+              <TrendingDown className="h-2 w-2 text-primary" />
             </div>
           </div>
           <div className="text-right">
-            <span className="text-sm font-mono font-medium text-blue-600">
+            <span className="text-sm font-mono font-medium text-primary">
               {simulation.minReceived}
             </span>
             <div className="text-xs text-muted-foreground">
@@ -164,7 +164,7 @@ export function SimulationPanel({
           <span className="text-sm text-muted-foreground">Price Impact</span>
           <span
             className={`text-sm font-medium ${
-              isHighImpact ? "text-amber-600" : "text-emerald-600"
+              isHighImpact ? "text-warning" : "text-success"
             }`}
           >
             {simulation.priceImpact}%
@@ -174,10 +174,10 @@ export function SimulationPanel({
 
       {/* Warning for high price impact */}
       {isHighImpact && (
-        <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
+        <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-warning">
           <div className="flex items-start gap-2">
-            <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-            <div className="text-xs text-amber-700">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div className="text-xs">
               <strong>High Price Impact:</strong> This trade may significantly affect the market price. Consider splitting into smaller orders.
             </div>
           </div>

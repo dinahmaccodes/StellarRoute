@@ -69,4 +69,13 @@ describe("RouteDisplay", () => {
       expect(Math.abs(initialHeight - finalHeight)).toBeLessThan(50);
     }
   });
+
+  it("uses theme-safe status colors and focus-visible rings", () => {
+    render(<RouteDisplay amountOut="50.0" isLoading={false} />);
+
+    expect(screen.getByText("Optimal")).toHaveClass("text-success");
+    expect(
+      screen.getByRole("button", { name: "Show route details" }),
+    ).toHaveClass("focus-visible:ring-ring/50", "focus-visible:ring-[3px]");
+  });
 });

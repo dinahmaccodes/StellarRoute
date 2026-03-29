@@ -210,7 +210,7 @@ export function SwapCard() {
               volatility={volatility}
               isLoading={isLoading}
             />
-          </>
+          </div>
         )}
         {quoteError && isValidAmount && (
           <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
