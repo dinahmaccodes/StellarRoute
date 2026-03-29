@@ -193,7 +193,6 @@ pub struct RouteResponse {
     /// Unix timestamp (ms) when this route was generated
     pub timestamp: i64,
 }
-}
 
 /// A comprehensive set of multiple ranked execution routes
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]

@@ -10,11 +10,10 @@ pub mod replay;
 pub mod routes_endpoint;
 
 pub mod ws;
-
-
 use axum::{routing::{get, post}, Router};
 use std::sync::Arc;
 
+use crate::middleware::legacy_route_deprecation;
 use crate::state::AppState;
 
 /// Create the main API router
@@ -30,7 +29,10 @@ pub fn create_router(state: Arc<AppState>) -> Router {
             get(orderbook::get_orderbook),
         )
         .route("/api/v1/quote/:base/:quote", get(quote::get_quote))
-        .route("/api/v1/route/:base/:quote", get(quote::get_route))
+        .route(
+            "/api/v1/route/:base/:quote",
+            get(quote::get_route).route_layer(axum::middleware::from_fn(legacy_route_deprecation)),
+        )
         .route("/api/v1/batch/quote", axum::routing::post(quote::get_batch_quotes))
 
         // Replay routes

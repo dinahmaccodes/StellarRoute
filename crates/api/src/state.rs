@@ -7,16 +7,13 @@ use tokio::sync::Mutex;
 
 use crate::cache::{CacheManager, SingleFlight};
 
+use crate::graph::GraphManager;
 use crate::models::{QuoteResponse, RoutesResponse};
 use crate::replay::capture::CaptureHook;
-use crate::graph::GraphManager;
 use crate::routes::ws::WsState;
 use stellarroute_routing::health::circuit_breaker::CircuitBreakerRegistry;
 
 use crate::worker::{JobQueue, RouteWorkerPool, WorkerPoolConfig};
-use crate::replay::capture::CaptureHook;
-use crate::routes::ws::WsState;
-use stellarroute_routing::health::circuit_breaker::{CircuitBreakerRegistry, BreakerConfig};
 
 /// Cache policy configuration
 #[derive(Debug, Clone)]

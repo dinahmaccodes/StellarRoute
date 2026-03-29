@@ -326,12 +326,17 @@ paths:
     get:
       operationId: get_route
       summary: Get trading route
+      deprecated: true
       description: |
         Returns only the optimal execution path and routing steps for trading
         `amount` of the base asset for the quote asset.
 
         Unlike the quote endpoint, this returns a simplified response without
         detailed pricing breakdown or venue evaluations.
+
+        This legacy route is deprecated in favor of `/api/v1/routes/{base}/{quote}`.
+        Clients should watch the `Deprecation`, `Sunset`, and `Link` headers and
+        migrate using the guidance in `docs/api/versioning.md`.
       tags:
         - trading
       parameters:
