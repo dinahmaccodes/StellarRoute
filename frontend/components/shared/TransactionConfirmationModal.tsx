@@ -56,6 +56,8 @@ interface TransactionConfirmationModalProps {
   // Actions
   onConfirm: () => void;
   onCancel?: () => void;
+  confirmDisabled?: boolean;
+  confirmDisabledReason?: string;
   // State
   status: TransactionStatus | "review";
   errorMessage?: string;
@@ -84,6 +86,8 @@ export function TransactionConfirmationModal({
   routePath,
   onConfirm,
   onCancel,
+  confirmDisabled = false,
+  confirmDisabledReason,
   status,
   errorMessage,
   txHash,
@@ -385,6 +389,11 @@ export function TransactionConfirmationModal({
               >
                 {isBatch ? "Confirm Batch Swaps" : "Confirm Swap"}
               </Button>
+              {confirmDisabledReason && (
+                <p className="w-full text-center text-xs text-destructive">
+                  {confirmDisabledReason}
+                </p>
+              )}
               <Button
                 type="button"
                 variant="outline"

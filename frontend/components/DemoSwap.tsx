@@ -21,6 +21,7 @@ import { useQuoteRefresh } from "@/hooks/useQuoteRefresh";
 import { useTransactionHistory } from "@/hooks/useTransactionHistory";
 import { useWallet } from "@/components/providers/wallet-provider";
 import { useSettings } from "@/components/providers/settings-provider";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 
 import type { PathStep, TradingPair } from "@/types";
 import { TransactionStatus } from "@/types/transaction";
@@ -56,6 +57,7 @@ export function DemoSwap() {
   const { data: pairs, loading: pairsLoading, error: pairsError } = usePairs();
   const { isConnected, stubSpendableBalance } = useWallet();
   const { settings } = useSettings();
+  const { isOnline, isOffline } = useOnlineStatus();
 
   const [selectedKey, setSelectedKey] = useState<string>("");
   const [sellRaw, setSellRaw] = useState<string>("");
@@ -130,10 +132,14 @@ export function DemoSwap() {
     autoRefreshEnabled,
     setAutoRefreshEnabled,
     isStale,
-  } = useQuoteRefresh(quoteBase, quoteCounter, numericForQuote, "sell");
+    isRecovering,
+    retryAttempt,
+  } = useQuoteRefresh(quoteBase, quoteCounter, numericForQuote, "sell", {
+    isOnline,
+  });
 
   const refreshDisabled =
-    quoteLoading || manualRefreshCoolingDown || !numericForQuote;
+    !isOnline || quoteLoading || manualRefreshCoolingDown || !numericForQuote;
 
   const amountInputInvalid =
     sellRaw.trim() !== "" &&
@@ -172,10 +178,13 @@ export function DemoSwap() {
     });
   };
   const handleSwapClick = () => {
-    if (batch.length === 0 && !submitValidation.isValid) {
-      toast.error(
-        submitValidation.issues[0]?.message ?? "Invalid swap inputs."
-      );
+    if (!isOnline) {
+      toast.error("You are offline. Reconnect to continue.");
+      return;
+    }
+
+    if (!submitValidation.isValid) {
+      toast.error(submitValidation.issues[0]?.message ?? "Invalid swap inputs.");
       return;
     }
 
@@ -186,6 +195,12 @@ export function DemoSwap() {
   };
 
   const handleConfirm = () => {
+    if (!isOnline) {
+      setTxStatus("failed");
+      setErrorMessage("No internet connection. Reconnect and try again.");
+      return;
+    }
+
     setTxStatus("pending");
 
     setTimeout(() => {
@@ -242,6 +257,13 @@ export function DemoSwap() {
   return (
     <Card className="mx-auto mt-8 max-w-lg border-primary/20 bg-background/50 p-6 shadow-lg backdrop-blur-sm">
       <div className="space-y-4">
+        {isOffline && (
+          <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            You&apos;re offline. Quotes are paused and swap submission is disabled
+            until connection is restored.
+          </div>
+        )}
+
         <div>
           <h2 className="mb-1 text-xl font-bold">Swap Tokens</h2>
           <p className="text-sm text-muted-foreground">
@@ -345,9 +367,26 @@ export function DemoSwap() {
               )}
             </div>
             {quoteError && numericForQuote !== undefined && (
-              <p className="mt-1 text-xs text-destructive">
-                Quote failed: {quoteError.message}
-              </p>
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-destructive">
+                <p>Quote failed: {quoteError.message}</p>
+                {isRecovering && (
+                  <p className="text-muted-foreground">
+                    Network looks unstable. Retrying automatically (attempt {retryAttempt}).
+                  </p>
+                )}
+                {isOnline && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => refresh()}
+                    disabled={quoteLoading || manualRefreshCoolingDown}
+                    className="h-6 px-2 text-xs"
+                  >
+                    Retry now
+                  </Button>
+                )}
+              </div>
             )}
           </div>
 
@@ -453,7 +492,7 @@ export function DemoSwap() {
               ) : (
                 <RefreshCw className="h-4 w-4" aria-hidden />
               )}
-              Refresh quote
+              {quoteError ? "Retry quote" : "Refresh quote"}
             </Button>
             <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
               <input
@@ -468,39 +507,16 @@ export function DemoSwap() {
           </div>
         </div>
 
-        <div className="flex gap-3">
-          <Button
-             type="button"
-             variant="outline"
-             className="flex-1 h-12"
-             onClick={handleAddToBatch}
-             disabled={!selectedPair || parseResult.status !== "ok" || quoteLoading}
-          >
-            Add to Batch
-          </Button>
-          <Button
-            className="h-12 flex-[2] text-lg"
-            onClick={handleSwapClick}
-            disabled={
-              (batch.length === 0 && !submitValidation.isValid)
-            }
-          >
-            {batch.length > 0 ? `Review Batch (${batch.length})` : "Review Swap"}
-          </Button>
-        </div>
-        {batch.length > 0 && (
-          <div className="flex justify-between items-center px-1">
-             <span className="text-xs text-muted-foreground">
-               {batch.length} items in current batch
-             </span>
-             <button 
-               onClick={() => setBatch([])}
-               className="text-xs text-destructive hover:underline"
-             >
-               Clear Batch
-             </button>
-           </div>
-        )}
+        <Button
+          className="h-12 w-full text-lg"
+          onClick={handleSwapClick}
+          disabled={
+            !isOnline ||
+            !submitValidation.isValid
+          }
+        >
+          Review Swap
+        </Button>
       </div>
 
       <TransactionConfirmationModal
@@ -520,6 +536,12 @@ export function DemoSwap() {
         swaps={batch}
         onConfirm={handleConfirm}
         onCancel={handleCancel}
+        confirmDisabled={isOffline}
+        confirmDisabledReason={
+          isOffline
+            ? "Reconnect to the internet before confirming this swap."
+            : undefined
+        }
         status={txStatus}
         errorMessage={errorMessage}
         txHash={txHash}

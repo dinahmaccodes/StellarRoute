@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { maxDecimalsForSellAsset } from "@/lib/amount-input";
 import { SwapValidationSchema } from "@/lib/swap-validation";
 
@@ -19,6 +20,7 @@ export function SwapWithPairSelector() {
   const { data: pairsData, loading: pairsLoading, error: pairsError } = usePairs();
   const { base, quote, setPair, isInitializing } = useTokenPairUrl();
   const [amount, setAmount] = useState("");
+  const { isOnline, isOffline } = useOnlineStatus();
 
   // `usePairs()` returns `TradingPair[]` directly (not `{ pairs: ... }`)
   const pairs = useMemo(() => pairsData ?? [], [pairsData]);
@@ -94,6 +96,11 @@ export function SwapWithPairSelector() {
 
       {selectedPair && (
         <Card className="p-6">
+          {isOffline && (
+            <div className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              You&apos;re offline. Reconnect to continue.
+            </div>
+          )}
           <h3 className="text-lg font-semibold mb-4">Swap Amount</h3>
           <div className="space-y-4">
             <div>
@@ -130,7 +137,7 @@ export function SwapWithPairSelector() {
             <Button
               className="w-full"
               size="lg"
-              disabled={!submitValidation?.isValid}
+              disabled={!isOnline || !submitValidation?.isValid}
             >
               Review Swap
             </Button>

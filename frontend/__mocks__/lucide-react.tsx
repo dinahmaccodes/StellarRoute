@@ -41,6 +41,9 @@ export const History = Icon;
 export const Search = Icon;
 
 export const AlertTriangle = Icon;
+export const DollarSign = Icon;
+export const Layers = Icon;
+export const Minus = Icon;
 export const TrendingDown = Icon;
 export const TrendingUp = Icon;
 

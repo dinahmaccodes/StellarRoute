@@ -7,10 +7,16 @@ import type { SwapValidationResult } from "@/lib/swap-validation";
 interface SwapCTAProps {
   validation: SwapValidationResult;
   isLoading: boolean;
+  isOnline?: boolean;
   onSwap: () => void;
 }
 
-export function SwapCTA({ validation, isLoading, onSwap }: SwapCTAProps) {
+export function SwapCTA({
+  validation,
+  isLoading,
+  isOnline = true,
+  onSwap,
+}: SwapCTAProps) {
   let label = "Review Swap";
   let disabled = false;
 
@@ -22,7 +28,10 @@ export function SwapCTA({ validation, isLoading, onSwap }: SwapCTAProps) {
     (issue) => issue.field === "slippage",
   );
 
-  if (hasPairIssue) {
+  if (!isOnline) {
+    label = "Offline";
+    disabled = true;
+  } else if (hasPairIssue) {
     label = "Select tokens";
     disabled = true;
   } else if (hasAmountIssue) {
@@ -37,8 +46,8 @@ export function SwapCTA({ validation, isLoading, onSwap }: SwapCTAProps) {
   }
 
   return (
-    <Button 
-      className="w-full h-14 text-lg font-medium shadow-md transition-all active:scale-[0.98] mt-2" 
+    <Button
+      className="mt-2 h-14 w-full text-lg font-medium shadow-md transition-all active:scale-[0.98]"
       size="lg"
       disabled={disabled}
       onClick={onSwap}
