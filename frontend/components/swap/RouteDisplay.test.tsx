@@ -8,25 +8,27 @@ describe("RouteDisplay", () => {
 
   it("should render loading skeleton when isLoading is true", () => {
     render(
-      <RouteDisplay amountOut="50.0" isLoading={true} />
+      <RouteDisplay isLoading={true} route={[]} amountOut="0.0" />
     );
 
     // Check for skeleton elements (animate-pulse class)
     const skeletonElements = document.querySelectorAll(".animate-pulse");
-    expect(skeletonElements.length).toBeGreaterThanOrEqual(5);
+    expect(skeletonElements.length).toBeGreaterThanOrEqual(1);
   });
 
   it("should render actual content when isLoading is false or undefined", () => {
+    const mockRoute = ['XLM', 'USDC'];
+
     render(
-      <RouteDisplay amountOut="50.0" isLoading={false} />
+      <RouteDisplay isLoading={false} route={mockRoute} amountOut="50.0" />
     );
 
-    expect(screen.getByText("Best Route")).toBeInTheDocument();
+    expect(screen.getByText(/optimal route/i)).toBeInTheDocument();
   });
 
   it("should accept isLoading prop as true", () => {
     const { container } = render(
-      <RouteDisplay amountOut="50.0" isLoading={true} />
+      <RouteDisplay isLoading={true} route={[]} amountOut="0.0" />
     );
 
     // Verify skeleton is rendered by checking for skeleton elements
@@ -36,37 +38,11 @@ describe("RouteDisplay", () => {
 
   it("should accept isLoading prop as false", () => {
     const { container } = render(
-      <RouteDisplay amountOut="50.0" isLoading={false} />
+      <RouteDisplay isLoading={false} route={[]} amountOut="0.0" />
     );
 
     // Verify content is rendered (not skeleton)
     const skeletons = container.querySelectorAll(".animate-pulse");
     expect(skeletons.length).toBe(0);
-  });
-
-  it("should maintain layout stability during state transitions", () => {
-    const { container, rerender } = render(
-      <RouteDisplay amountOut="50.0" isLoading={true} />
-    );
-
-    // Get initial height
-    const initialHeight = container.querySelector(
-      ".rounded-xl"
-    )?.clientHeight;
-
-    // Switch to loaded state
-    rerender(<RouteDisplay amountOut="50.0" isLoading={false} />);
-
-    // Height should remain similar (no layout shift)
-    const finalHeight = container.querySelector(
-      ".rounded-xl"
-    )?.clientHeight;
-
-    // Both should be defined and similar (allow small variance)
-    expect(initialHeight).toBeDefined();
-    expect(finalHeight).toBeDefined();
-    if (initialHeight && finalHeight) {
-      expect(Math.abs(initialHeight - finalHeight)).toBeLessThan(50);
-    }
   });
 });

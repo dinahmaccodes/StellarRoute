@@ -367,19 +367,19 @@ export function TransactionConfirmationModal({
                   <span className="text-muted-foreground">Network Fee</span>
                   <span>{networkFee} XLM</span>
                 </div>
-                <div className="flex flex-col gap-1 pt-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Route</span>
-                    <CopyButton
-                      value={describeTradeRoute(routePath)}
-                      label="Copy route summary"
-                    />
-                  </div>
-                  <RouteVisualization
-                    path={routePath}
-                    className="border-none shadow-none bg-transparent p-0"
+              <div className="flex flex-col gap-1 pt-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Route</span>
+                  <CopyButton
+                    value={describeTradeRoute(routePath || [])}
+                    label="Copy route summary"
                   />
                 </div>
+                <RouteVisualization
+                  path={routePath || []}
+                  className="border-none shadow-none bg-transparent p-0"
+                />
+              </div>
               </div>
 
               <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-950 dark:text-amber-100">
@@ -391,6 +391,7 @@ export function TransactionConfirmationModal({
             <DialogFooter className="flex-col sm:flex-col gap-2">
               <Button
                 onClick={onConfirm}
+                disabled={confirmDisabled}
                 className="w-full min-h-[48px]"
                 size="lg"
               >

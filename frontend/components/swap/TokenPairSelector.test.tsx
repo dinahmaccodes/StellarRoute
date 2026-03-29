@@ -230,9 +230,9 @@ describe("TokenPairSelector", () => {
     expect(screen.getByText("API connection failed")).toBeDefined();
   });
 
-  it("disables buttons when loading", () => {
+  it("renders skeletons and disables swap button when loading", () => {
     const onPairChange = vi.fn();
-    render(
+    const { container } = render(
       <TokenPairSelector
         pairs={mockPairs}
         onPairChange={onPairChange}
@@ -240,11 +240,11 @@ describe("TokenPairSelector", () => {
       />
     );
 
-    const sellButtons = screen.getAllByText("You sell");
-    const buyButtons = screen.getAllByText("You buy");
+    const skeletons = container.querySelectorAll(".animate-pulse");
+    expect(skeletons.length).toBeGreaterThan(0);
 
-    expect(sellButtons[0].closest("button")).toHaveProperty("disabled", true);
-    expect(buyButtons[0].closest("button")).toHaveProperty("disabled", true);
+    const swapButton = screen.getByTitle("Swap base and quote assets");
+    expect(swapButton).toHaveProperty("disabled", true);
   });
 
   it("filters quote assets based on selected base", async () => {
