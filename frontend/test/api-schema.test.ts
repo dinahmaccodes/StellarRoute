@@ -1,4 +1,5 @@
 // frontend/test/api-schema.test.ts
+import { describe, test, expect } from 'vitest';
 
 describe("OpenAPI schema", () => {
   test("paths should exist", () => {

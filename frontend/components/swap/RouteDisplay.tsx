@@ -2,7 +2,8 @@
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowRight, Info, ChevronDown, MapPin } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Badge } from "@/components/ui/badge";
 import { ConfidenceIndicator } from "./ConfidenceIndicator";
 import { RouteDisplaySkeleton } from "./RouteDisplaySkeleton";
@@ -16,6 +17,9 @@ interface RouteDisplayProps {
   isLoading?: boolean;
 }
 
+// VIRTUALIZATION_THRESHOLD: The number of items beyond which the route details list is virtualized.
+const VIRTUALIZATION_THRESHOLD = 10;
+
 export function RouteDisplay({
   route,
   amountOut,
@@ -24,6 +28,17 @@ export function RouteDisplay({
   isLoading = false,
 }: RouteDisplayProps) {
   const [showDetails, setShowDetails] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const hops = useMemo(() => route.slice(0, -1), [route]);
+  const isVirtualized = hops.length >= VIRTUALIZATION_THRESHOLD;
+
+  const rowVirtualizer = useVirtualizer({
+    count: hops.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 40, // height of a hop item + margin/padding approx
+    overscan: 3,
+  });
 
   if (isLoading) {
     return <RouteDisplaySkeleton />;
@@ -93,20 +108,62 @@ export function RouteDisplay({
               <span>Provider</span>
             </div>
             {route.length > 2 ? (
-              <div className="space-y-1.5">
-                {route.slice(0, -1).map((token, i) => (
-                  <div key={`hop-${i}`} className="flex items-center justify-between p-2 rounded-lg bg-background/50 border border-border/10 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold">{token}</span>
-                      <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                      <span className="font-semibold">{route[i+1]}</span>
-                    </div>
-                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground">
-                      {i % 2 === 0 ? 'AQUA Pool' : 'Orderbook'}
-                    </span>
+              isVirtualized ? (
+                <div
+                  ref={scrollRef}
+                  className="max-h-[250px] overflow-auto pr-2"
+                >
+                  <div
+                    style={{
+                      height: `${rowVirtualizer.getTotalSize()}px`,
+                      width: '100%',
+                      position: 'relative',
+                    }}
+                  >
+                    {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                      const i = virtualRow.index;
+                      const token = hops[i];
+                      return (
+                        <div
+                          key={`hop-${i}`}
+                          ref={rowVirtualizer.measureElement}
+                          data-index={virtualRow.index}
+                          className="flex items-center justify-between p-2 rounded-lg bg-background/50 border border-border/10 text-xs absolute w-full"
+                          style={{
+                            top: 0,
+                            left: 0,
+                            transform: `translateY(${virtualRow.start}px)`,
+                          }}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold">{token}</span>
+                            <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                            <span className="font-semibold">{route[i + 1]}</span>
+                          </div>
+                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground">
+                            {i % 2 === 0 ? 'AQUA Pool' : 'Orderbook'}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {hops.map((token, i) => (
+                    <div key={`hop-${i}`} className="flex items-center justify-between p-2 rounded-lg bg-background/50 border border-border/10 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold">{token}</span>
+                        <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                        <span className="font-semibold">{route[i+1]}</span>
+                      </div>
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground">
+                        {i % 2 === 0 ? 'AQUA Pool' : 'Orderbook'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )
             ) : (
               <div className="flex items-center justify-between p-2 rounded-lg bg-background/50 border border-border/10 text-xs">
                 <div className="flex items-center gap-2">

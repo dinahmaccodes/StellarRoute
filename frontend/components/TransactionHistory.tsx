@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
+import { useVirtualizer } from "@tanstack/react-virtual"
 import { useTransactionHistory } from "@/hooks/useTransactionHistory"
 import { TransactionRecord } from "@/types/transaction"
 import { 
@@ -23,6 +24,9 @@ import { CopyButton } from "@/components/shared/CopyButton"
 // Hardcode mock wallet to match DemoSwap
 const MOCK_WALLET = "GBSU...XYZ9"
 
+// VIRTUALIZATION_THRESHOLD: The number of items beyond which the transaction list is virtualized.
+const VIRTUALIZATION_THRESHOLD = 50;
+
 export function TransactionHistory() {
   const { transactions, clearHistory } = useTransactionHistory(MOCK_WALLET)
   const [filterAsset, setFilterAsset] = useState<string>("ALL")
@@ -36,6 +40,8 @@ export function TransactionHistory() {
     }, 300)
     return () => clearTimeout(timer)
   }, [])
+
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   // Filtering and Sorting
   const filteredTxs = transactions.filter((tx) => {
@@ -65,6 +71,14 @@ export function TransactionHistory() {
         return <Badge variant="outline">{status}</Badge>
     }
   }
+
+  const isVirtualized = sortedTxs.length >= VIRTUALIZATION_THRESHOLD;
+  const rowVirtualizer = useVirtualizer({
+    count: sortedTxs.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 64, // Estimated row height
+    overscan: 5,
+  })
 
   return (
     <Card className="flex flex-col h-[calc(100vh-140px)] m-4 shadow-sm border-primary/10">
@@ -104,7 +118,7 @@ export function TransactionHistory() {
         </div>
       </div>
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1" viewportRef={scrollRef}>
         {isLoading ? (
           <ActivityTableSkeleton />
         ) : sortedTxs.length === 0 ? (
@@ -119,19 +133,39 @@ export function TransactionHistory() {
           </div>
         ) : (
           <Table>
-            <TableHeader className="bg-muted/50 sticky top-0">
-              <TableRow>
-                <TableHead className="w-[180px]">Date</TableHead>
-                <TableHead>Swap</TableHead>
-                <TableHead>Rate</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Explorer</TableHead>
+            <TableHeader className="bg-muted/50 sticky top-0 z-10">
+              <TableRow className="flex w-full">
+                <TableHead className="w-[180px] shrink-0">Date</TableHead>
+                <TableHead className="flex-1 min-w-[200px]">Swap</TableHead>
+                <TableHead className="w-[180px] shrink-0">Rate</TableHead>
+                <TableHead className="w-[120px] shrink-0">Status</TableHead>
+                <TableHead className="w-[100px] shrink-0 text-right">Explorer</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
-              {sortedTxs.map((tx) => (
-                <TableRow key={tx.id}>
-                  <TableCell className="font-medium">
+            <TableBody 
+              className="block"
+              style={{
+                height: isVirtualized ? `${rowVirtualizer.getTotalSize()}px` : 'auto',
+                position: isVirtualized ? 'relative' : 'static',
+              }}
+            >
+              {(isVirtualized ? rowVirtualizer.getVirtualItems() : sortedTxs.map((tx, index) => ({ index } as unknown as ReturnType<typeof rowVirtualizer.getVirtualItems>[0]))).map((virtualRow) => {
+                const tx = sortedTxs[virtualRow.index]
+                return (
+                 <TableRow 
+                   key={tx.id}
+                   data-index={virtualRow.index}
+                   ref={isVirtualized ? rowVirtualizer.measureElement : null}
+                   className="flex w-full"
+                   style={isVirtualized ? {
+                     position: 'absolute',
+                     top: 0,
+                     left: 0,
+                     width: '100%',
+                     transform: `translateY(${virtualRow.start}px)`
+                   } : undefined}
+                 >
+                   <TableCell className="font-medium w-[180px] shrink-0">
                     <div className="flex flex-col">
                       <span>{new Date(tx.timestamp).toLocaleDateString()}</span>
                       <span className="text-xs text-muted-foreground whitespace-nowrap">
@@ -139,7 +173,7 @@ export function TransactionHistory() {
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="flex-1 min-w-[200px]">
                     <div className="flex items-center gap-3">
                        <div className="flex flex-col">
                           <span className="font-bold text-sm">-{tx.fromAmount}</span>
@@ -152,10 +186,10 @@ export function TransactionHistory() {
                        </div>
                     </div>
                   </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
+                  <TableCell className="text-xs text-muted-foreground w-[180px] shrink-0">
                     1 {tx.fromAsset} = {tx.exchangeRate} {tx.toAsset}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="w-[120px] shrink-0">
                     {getStatusBadge(tx.status)}
                     {tx.errorMessage && (
                       <div className="text-[10px] text-destructive mt-1 max-w-[150px] truncate" title={tx.errorMessage}>
@@ -163,7 +197,7 @@ export function TransactionHistory() {
                       </div>
                     )}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right w-[100px] shrink-0">
                     {tx.hash ? (
                       <div className="inline-flex items-center gap-1 justify-end">
                         <CopyButton value={tx.hash} label="Copy transaction hash" />
@@ -182,7 +216,7 @@ export function TransactionHistory() {
                     )}
                   </TableCell>
                 </TableRow>
-              ))}
+              )})}
             </TableBody>
           </Table>
         )}
