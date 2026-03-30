@@ -109,29 +109,26 @@ Run tests with:
 npm test TokenPairSelector
 ```
 
-## Feature Flags
+## i18n Scaffold
 
-Experimental swap UI can be toggled without changing component code:
+Swap copy now flows through `frontend/lib/swap-i18n.ts` so the core swap UI can translate user-visible strings without introducing a heavyweight runtime.
 
-- `NEXT_PUBLIC_FEATURE_ROUTES_BETA=true` enables the beta route panel at build time
-- flags default to `false` unless explicitly enabled
-- maintainers can also inject runtime flags by setting `window.__STELLAR_ROUTE_FLAGS__`
+- `en-US` is the default and fallback locale for swap copy
+- `zh-CN` is included as the first translated locale to prove the wiring end-to-end
+- other supported locales currently fall back to `en-US` until dedicated copy is added
 
-Example runtime override pattern:
+### Adding or Updating Strings
 
-```html
-<script>
-  window.__STELLAR_ROUTE_FLAGS__ = {
-    routesBeta: true,
-  };
-</script>
+1. Add or update the key in the `SwapTranslationKey` union.
+2. Fill in the English copy inside the `en-US` dictionary.
+3. Add translated copy for any locale you want to support immediately.
+4. Use `useSwapI18n().t("your.key")` inside swap components instead of inline text.
+
+### Focused Verification
+
+```bash
+npm test -- lib/swap-i18n.test.ts components/swap/SimulationPanel.test.tsx components/swap/SwapCard.test.tsx components/swap/RouteDisplay.test.tsx
 ```
-
-Current flags:
-
-| Flag | Default | Gated UI |
-|------|---------|----------|
-| `routesBeta` | `false` | `RouteDisplay` in the swap flow |
 
 ## Design Decisions
 
@@ -152,14 +149,6 @@ Current flags:
 - Focus management in dialogs
 - Clear error messaging
 - Semantic HTML structure
-
-## Theme Parity Checklist
-
-- `PairSelector`: amount inputs now keep a visible `focus-visible` ring and the receive token pill uses theme tokens instead of a hardcoded blue.
-- `SimulationPanel`: error, info, warning, and low-impact states now use `destructive`, `primary`, `warning`, and `success` tokens.
-- `ConfidenceIndicator`: confidence levels and volatility notices now use semantic theme tokens instead of fixed emerald/amber/red/orange values.
-- `RouteDisplay`: success badge and route action controls use theme-safe colors and consistent `focus-visible` rings in both light and dark themes.
-- `Settings` page: existing controls were checked and already rely on shared UI primitives (`Input`, `Select`, `Button`) for theme-aware borders and focus treatment.
 
 ## Browser Support
 

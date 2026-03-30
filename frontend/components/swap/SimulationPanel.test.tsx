@@ -20,6 +20,25 @@ describe("SimulationPanel", () => {
     ).toBeInTheDocument();
   });
 
+  it("should respect stored locale when rendering translated swap copy", () => {
+    window.localStorage.setItem(
+      "stellar_route_settings",
+      JSON.stringify({ locale: "zh-CN" })
+    );
+
+    render(
+      <SimulationPanel
+        payAmount=""
+        expectedOutput="0"
+        slippage={0.5}
+      />
+    );
+
+    expect(screen.getByText("输入数量后即可查看交易模拟")).toBeInTheDocument();
+
+    window.localStorage.clear();
+  });
+
   it("should show loading state", () => {
     render(
       <SimulationPanel

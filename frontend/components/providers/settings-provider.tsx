@@ -102,3 +102,7 @@ export function useSettings() {
   }
   return context;
 }
+
+export function useOptionalSettings() {
+  return useContext(SettingsContext);
+}

@@ -12,53 +12,14 @@ import { SwapCTA } from './SwapCTA';
 import { SimulationPanel } from './SimulationPanel';
 import { FeeBreakdownPanel } from './FeeBreakdownPanel';
 import { useTradeFormStorage } from '@/hooks/useTradeFormStorage';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
-import {
-  useQuoteRefresh,
-  type UseQuoteRefreshOptions,
-} from '@/hooks/useQuoteRefresh';
-import { StellarRouteApiError } from '@/lib/api/client';
 import { STELLAR_NATIVE_MAX_DECIMALS } from '@/lib/amount-input';
 import { SwapValidationSchema } from '@/lib/swap-validation';
+import { useSwapI18n } from '@/lib/swap-i18n';
 
-const DEFAULT_QUOTE_ASSET =
-  'USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN';
-
-interface SwapCardProps {
-  quoteOptions?: UseQuoteRefreshOptions;
-}
-
-function formatRetryCountdown(ms: number): string {
-  return `${Math.max(1, Math.ceil(ms / 1_000))}s`;
-}
-
-function getFriendlyQuoteError(
-  error: Error | null,
-  rateLimitRemainingMs: number,
-): string | null {
-  if (!error) {
-    return null;
-  }
-
-  if (error instanceof StellarRouteApiError && error.isRateLimit) {
-    if (rateLimitRemainingMs > 0) {
-      return `Quote requests are temporarily rate-limited. Please wait about ${formatRetryCountdown(
-        rateLimitRemainingMs,
-      )} before trying again.`;
-    }
-
-    return 'Quote requests are temporarily rate-limited. Please try again shortly.';
-  }
-
-  if (error instanceof StellarRouteApiError && error.isServerError) {
-    return 'Quote service is temporarily unavailable. Please retry in a moment.';
-  }
-
-  return error.message;
-}
-
-export function SwapCard({ quoteOptions }: SwapCardProps) {
+export function SwapCard() {
+  const { t } = useSwapI18n();
   const {
     amount: payAmount,
     setAmount: setPayAmount,
@@ -68,6 +29,10 @@ export function SwapCard({ quoteOptions }: SwapCardProps) {
     isHydrated,
   } = useTradeFormStorage();
 
+  const [receiveAmount, setReceiveAmount] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const quoteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { isOnline, isOffline } = useOnlineStatus();
   const [confidenceScore, setConfidenceScore] = useState<number>(85);
   const [volatility, setVolatility] = useState<'high' | 'medium' | 'low'>('low');
@@ -81,60 +46,90 @@ export function SwapCard({ quoteOptions }: SwapCardProps) {
     { mode: 'submit', requirePair: false },
   );
   const isValidAmount = validation.amountResult.status === 'ok';
-  const parsedPayAmount = parseFloat(payAmount);
-  const quoteAmount =
-    Number.isFinite(parsedPayAmount) && parsedPayAmount > 0
-      ? parsedPayAmount
-      : undefined;
-  const quoteState = useQuoteRefresh(
-    'native',
-    DEFAULT_QUOTE_ASSET,
-    quoteAmount,
-    'sell',
-    {
-      ...quoteOptions,
-      isOnline,
-    },
-  );
-  const receiveAmount = isOnline ? quoteState.data?.total ?? '' : '';
-  const isLoading = isOnline && (quoteState.loading || quoteState.isRecovering);
-  const quoteError =
-    quoteAmount && !isOnline
-      ? 'You are offline. Reconnect to refresh quote.'
-      : getFriendlyQuoteError(quoteState.error, quoteState.rateLimitRemainingMs);
-  const retryButtonLabel =
-    quoteState.rateLimitRemainingMs > 0
-      ? `Retry in ${formatRetryCountdown(quoteState.rateLimitRemainingMs)}`
-      : 'Retry quote';
 
-  const handlePayAmountChange = (amount: string) => {
-    setPayAmount(amount);
-  };
+  const clearQuoteTimer = useCallback(() => {
+    if (quoteTimerRef.current) {
+      clearTimeout(quoteTimerRef.current);
+      quoteTimerRef.current = null;
+    }
+  }, []);
 
-  const handleRetryQuote = () => {
-    quoteState.refresh();
-  };
+  const requestQuote = useCallback((amount: string) => {
+    clearQuoteTimer();
+    const amountNumber = parseFloat(amount);
 
-  useEffect(() => {
-    if (!quoteAmount) {
+    if (!Number.isFinite(amountNumber) || amountNumber <= 0) {
+      setIsLoading(false);
+      setQuoteError(null);
+      setReceiveAmount('');
       setConfidenceScore(85);
       setVolatility('low');
       return;
     }
 
-    const nextConfidence = Math.max(50, Math.min(95, 90 - quoteAmount / 100));
-    setConfidenceScore(Math.round(nextConfidence));
-    if (quoteAmount > 1000) {
-      setVolatility('high');
-    } else if (quoteAmount > 100) {
-      setVolatility('medium');
-    } else {
-      setVolatility('low');
+    if (!isOnline) {
+      setIsLoading(false);
+      setQuoteError(t('swap.card.offlineQuoteError'));
+      setReceiveAmount('');
+      return;
     }
-  }, [quoteAmount]);
+
+    setIsLoading(true);
+    setQuoteError(null);
+
+    quoteTimerRef.current = setTimeout(() => {
+      setReceiveAmount((amountNumber * 0.98).toFixed(4));
+      const nextConfidence = Math.max(50, Math.min(95, 90 - amountNumber / 100));
+      setConfidenceScore(Math.round(nextConfidence));
+      if (amountNumber > 1000) {
+        setVolatility('high');
+      } else if (amountNumber > 100) {
+        setVolatility('medium');
+      } else {
+        setVolatility('low');
+      }
+      setIsLoading(false);
+    }, 500);
+  }, [clearQuoteTimer, isOnline, t]);
+
+  const handlePayAmountChange = (amount: string) => {
+    setPayAmount(amount);
+    requestQuote(amount);
+  };
+
+  const handleRetryQuote = () => {
+    requestQuote(payAmount);
+  };
+
+  useEffect(() => {
+    if (!isOnline) {
+      clearQuoteTimer();
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional UI transition for offline mode
+      setIsLoading(false);
+      if (parseFloat(payAmount) > 0) {
+        setQuoteError(t('swap.card.offlineQuoteError'));
+      }
+      return;
+    }
+
+    // Automatic recovery: once online, refresh the active quote.
+    if (quoteError && parseFloat(payAmount) > 0) {
+      requestQuote(payAmount);
+    }
+  }, [isOnline, payAmount, quoteError, clearQuoteTimer, requestQuote, t]);
+
+  useEffect(() => {
+    return () => {
+      clearQuoteTimer();
+    };
+  }, [clearQuoteTimer]);
 
   const handleReset = () => {
+    clearQuoteTimer();
     reset();
+    setReceiveAmount('');
+    setQuoteError(null);
+    setIsLoading(false);
     setConfidenceScore(85);
     setVolatility('low');
   };
@@ -144,7 +139,7 @@ export function SwapCard({ quoteOptions }: SwapCardProps) {
     return (
       <Card className="w-full border shadow-sm">
         <CardHeader className="pb-4">
-          <CardTitle className="text-xl font-semibold">Swap</CardTitle>
+          <CardTitle className="text-xl font-semibold">{t('swap.card.title')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-32 animate-pulse rounded-lg bg-muted" />
@@ -158,22 +153,21 @@ export function SwapCard({ quoteOptions }: SwapCardProps) {
       <CardHeader className="pb-4">
         {isOffline && (
           <div className="mb-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            You&apos;re offline. Quote refresh and swap submission are paused until
-            your connection is restored.
+            {t('swap.card.offlineBanner')}
           </div>
         )}
         <div className="flex items-center justify-between flex-row">
-          <CardTitle className="text-xl font-semibold">Swap</CardTitle>
+          <CardTitle className="text-xl font-semibold">{t('swap.card.title')}</CardTitle>
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="icon"
               className="h-11 w-11 rounded-full"
               onClick={handleReset}
-              title="Clear form"
+              title={t('swap.card.clearForm')}
             >
               <RotateCcw className="h-4 w-4 text-muted-foreground" />
-              <span className="sr-only">Clear form</span>
+              <span className="sr-only">{t('swap.card.clearForm')}</span>
             </Button>
             <SlippageControl slippage={slippage} onChange={setSlippage} />
           </div>
@@ -195,28 +189,36 @@ export function SwapCard({ quoteOptions }: SwapCardProps) {
             />
             <FeeBreakdownPanel
               protocolFees={[
-                { name: 'Router Fee', amount: '0.001 XLM', description: 'Fee for using StellarRoute aggregator' },
-                { name: 'Pool Fee', amount: '0.003%', description: 'Liquidity provider fee for AQUA pool' },
+                {
+                  name: t('swap.fees.routerFee.name'),
+                  amount: '0.001 XLM',
+                  description: t('swap.fees.routerFee.description'),
+                },
+                {
+                  name: t('swap.fees.poolFee.name'),
+                  amount: '0.003%',
+                  description: t('swap.fees.poolFee.description'),
+                },
               ]}
               networkCosts={[
-                { name: 'Base Fee', amount: '0.00001 XLM', description: 'Stellar network base transaction fee' },
-                { name: 'Operation Fee', amount: '0.00002 XLM', description: 'Fee for path payment operations' },
+                {
+                  name: t('swap.fees.baseFee.name'),
+                  amount: '0.00001 XLM',
+                  description: t('swap.fees.baseFee.description'),
+                },
+                {
+                  name: t('swap.fees.operationFee.name'),
+                  amount: '0.00002 XLM',
+                  description: t('swap.fees.operationFee.description'),
+                },
               ]}
               totalFee="0.01 XLM"
               netOutput={`${(parseFloat(receiveAmount || '0') * 0.99).toFixed(4)} USDC`}
             />
             <QuoteSummary
-              rate={
-                quoteState.data
-                  ? `1 XLM ≈ ${Number.parseFloat(quoteState.data.price).toFixed(2)} USDC`
-                  : "1 XLM ≈ 0.98 USDC"
-              }
+              rate="1 XLM ≈ 0.98 USDC"
               fee="0.01 XLM"
-              priceImpact={
-                quoteState.data?.price_impact
-                  ? `${quoteState.data.price_impact}%`
-                  : "< 0.1%"
-              }
+              priceImpact="< 0.1%"
               isLoading={isLoading}
             />
             <RouteDisplay
@@ -236,13 +238,9 @@ export function SwapCard({ quoteOptions }: SwapCardProps) {
               size="sm"
               className="mt-2"
               onClick={handleRetryQuote}
-              disabled={
-                !isOnline ||
-                isLoading ||
-                quoteState.rateLimitRemainingMs > 0
-              }
+              disabled={!isOnline || isLoading}
             >
-              {retryButtonLabel}
+              {t('swap.card.retryQuote')}
             </Button>
           </div>
         )}
