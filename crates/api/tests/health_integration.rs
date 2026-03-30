@@ -10,7 +10,7 @@ use axum::{
 };
 use serde_json::Value;
 use sqlx::PgPool;
-use stellarroute_api::{Server, ServerConfig};
+use stellarroute_api::{Server, ServerConfig, state::DatabasePools};
 use tower::ServiceExt;
 
 // ---------------------------------------------------------------------------
@@ -90,7 +90,7 @@ async fn health_returns_200_when_db_is_up() {
         .await
         .expect("Failed to connect to database");
 
-    let router = Server::new(ServerConfig::default(), pool)
+    let router = Server::new(ServerConfig::default(), DatabasePools::new(pool, None))
         .await
         .into_router();
 
@@ -138,7 +138,7 @@ async fn health_has_json_content_type() {
         .await
         .expect("Failed to connect to database");
 
-    let router = Server::new(ServerConfig::default(), pool)
+    let router = Server::new(ServerConfig::default(), DatabasePools::new(pool, None))
         .await
         .into_router();
 

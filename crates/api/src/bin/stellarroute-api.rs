@@ -2,7 +2,7 @@
 
 use sqlx::postgres::PgPoolOptions;
 use std::time::Duration;
-use stellarroute_api::{telemetry, Server, ServerConfig};
+use stellarroute_api::{telemetry, Server, ServerConfig, state::DatabasePools};
 use tracing::{error, info};
 
 #[tokio::main]
@@ -12,9 +12,12 @@ async fn main() {
 
     info!("Starting StellarRoute API Server");
 
-    // Get database URL from environment
+    // Get database URLs from environment
+    // DATABASE_URL: Primary database for writes and fallback reads
+    // REPLICA_DATABASE_URL: Optional replica database for read-only queries to reduce primary load
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://localhost/stellarroute".to_string());
+    let replica_database_url = std::env::var("REPLICA_DATABASE_URL").ok();
 
     // Read pool configuration from environment variables
     let max_connections: u32 = std::env::var("DB_MAX_CONNECTIONS")
@@ -37,65 +40,59 @@ async fn main() {
         .ok()
         .and_then(|v| v.parse().ok())
         .unwrap_or(1800);
-    let statement_timeout_ms: u64 = std::env::var("DB_STATEMENT_TIMEOUT_MS")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(5000);
-    let lock_timeout_ms: u64 = std::env::var("DB_LOCK_TIMEOUT_MS")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(2000);
-    let idle_in_txn_timeout_ms: u64 = std::env::var("DB_IDLE_IN_TXN_TIMEOUT_MS")
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(5000);
 
-    info!(
-        "Connecting to database (pool: min={}, max={}, timeout={}s)...",
-        min_connections, max_connections, connection_timeout_secs
-    );
-    info!(
-        "DB guardrails: statement_timeout={}ms lock_timeout={}ms idle_in_txn_timeout={}ms",
-        statement_timeout_ms, lock_timeout_ms, idle_in_txn_timeout_ms
-    );
-    let pool = match PgPoolOptions::new()
+    // Create pool options
+    let pool_options = PgPoolOptions::new()
         .max_connections(max_connections)
         .min_connections(min_connections)
         .acquire_timeout(Duration::from_secs(connection_timeout_secs))
         .idle_timeout(Duration::from_secs(idle_timeout_secs))
-        .max_lifetime(Duration::from_secs(max_lifetime_secs))
-        .after_connect(move |conn, _meta| {
-            Box::pin(async move {
-                sqlx::query(&format!("SET statement_timeout = '{}ms'", statement_timeout_ms))
-                    .execute(conn)
-                    .await?;
-                sqlx::query(&format!("SET lock_timeout = '{}ms'", lock_timeout_ms))
-                    .execute(conn)
-                    .await?;
-                sqlx::query(&format!(
-                    "SET idle_in_transaction_session_timeout = '{}ms'",
-                    idle_in_txn_timeout_ms
-                ))
-                .execute(conn)
-                .await?;
-                Ok(())
-            })
-        })
-        .connect(&database_url)
-        .await
-    {
+        .max_lifetime(Duration::from_secs(max_lifetime_secs));
+
+    info!(
+        "Connecting to primary database (pool: min={}, max={}, timeout={}s)...",
+        min_connections, max_connections, connection_timeout_secs
+    );
+    let primary_pool = match pool_options.connect(&database_url).await {
         Ok(pool) => {
             info!(
-                "✅ Database connection pool established (max_connections={})",
+                "✅ Primary database connection pool established (max_connections={})",
                 max_connections
             );
             pool
         }
         Err(e) => {
-            error!("❌ Failed to connect to database: {}", e);
+            error!("❌ Failed to connect to primary database: {}", e);
             std::process::exit(1);
         }
     };
+
+    // Create replica pool if configured
+    let replica_pool = if let Some(replica_url) = &replica_database_url {
+        info!("Connecting to replica database...");
+        match pool_options.connect(replica_url).await {
+            Ok(pool) => {
+                info!("✅ Replica database connection pool established");
+                Some(pool)
+            }
+            Err(e) => {
+                warn!("⚠️ Failed to connect to replica database ({}), falling back to primary for reads", e);
+                None
+            }
+        }
+    } else {
+        info!("ℹ️ No replica database configured, using primary for all operations");
+        None
+    };
+
+    let db_pools = DatabasePools::new(primary_pool, replica_pool);
+
+    // Log dual-connection status for testing/verification
+    if db_pools.replica.is_some() {
+        info!("✅ Dual-connection setup: reads will use replica, writes use primary");
+    } else {
+        info!("ℹ️ Single-connection setup: all operations use primary");
+    }
 
     // Create server configuration
     let config = ServerConfig {
@@ -114,7 +111,7 @@ async fn main() {
     };
 
     // Create and start server
-    let server = Server::new(config, pool).await;
+    let server = Server::new(config, db_pools).await;
 
     if let Err(e) = server.start().await {
         error!("Server error: {}", e);

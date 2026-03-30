@@ -15,6 +15,32 @@ use stellarroute_routing::health::circuit_breaker::CircuitBreakerRegistry;
 
 use crate::worker::{JobQueue, RouteWorkerPool, WorkerPoolConfig};
 
+/// Database connection pools for primary and optional replica
+#[derive(Clone)]
+pub struct DatabasePools {
+    /// Primary database pool (used for writes and fallback for reads)
+    pub primary: PgPool,
+    /// Optional replica pool (used for read-only queries)
+    pub replica: Option<PgPool>,
+}
+
+impl DatabasePools {
+    /// Create new database pools
+    pub fn new(primary: PgPool, replica: Option<PgPool>) -> Self {
+        Self { primary, replica }
+    }
+
+    /// Get the appropriate pool for read operations (replica if available, otherwise primary)
+    pub fn read_pool(&self) -> &PgPool {
+        self.replica.as_ref().unwrap_or(&self.primary)
+    }
+
+    /// Get the primary pool for write operations
+    pub fn write_pool(&self) -> &PgPool {
+        &self.primary
+    }
+}
+
 /// Cache policy configuration
 #[derive(Debug, Clone)]
 pub struct CachePolicy {
@@ -85,8 +111,8 @@ impl CacheMetrics {
 /// Shared API state
 #[derive(Clone)]
 pub struct AppState {
-    /// Database connection pool
-    pub db: PgPool,
+    /// Database connection pools
+    pub db: DatabasePools,
     /// Redis cache manager (optional)
     pub cache: Option<Arc<Mutex<CacheManager>>>,
     /// API version
@@ -116,12 +142,12 @@ pub struct AppState {
 impl AppState {
     /// Create new application state
     pub fn new(db: PgPool) -> Self {
-        Self::new_with_policy(db, CachePolicy::default())
+        Self::new_with_policy(DatabasePools::new(db, None), CachePolicy::default())
     }
 
-    pub fn new_with_policy(db: PgPool, cache_policy: CachePolicy) -> Self {
+    pub fn new_with_policy(db: DatabasePools, cache_policy: CachePolicy) -> Self {
         let worker_pool = Self::create_worker_pool(db.clone());
-        let graph_manager = Arc::new(GraphManager::new(db.clone()));
+        let graph_manager = Arc::new(GraphManager::new(db.primary.clone()));
         graph_manager.clone().start_sync();
 
         Self {
@@ -144,16 +170,16 @@ impl AppState {
 
     /// Create new application state with cache
     pub fn with_cache(db: PgPool, cache: CacheManager) -> Self {
-        Self::with_cache_and_policy(db, cache, CachePolicy::default())
+        Self::with_cache_and_policy(DatabasePools::new(db, None), cache, CachePolicy::default())
     }
 
     pub fn with_cache_and_policy(
-        db: PgPool,
+        db: DatabasePools,
         cache: CacheManager,
         cache_policy: CachePolicy,
     ) -> Self {
         let worker_pool = Self::create_worker_pool(db.clone());
-        let graph_manager = Arc::new(GraphManager::new(db.clone()));
+        let graph_manager = Arc::new(GraphManager::new(db.primary.clone()));
         graph_manager.clone().start_sync();
 
         Self {
@@ -175,8 +201,8 @@ impl AppState {
     }
 
     /// Create worker pool with configuration
-    fn create_worker_pool(db: PgPool) -> Arc<RouteWorkerPool> {
-        let queue = JobQueue::new(db);
+    fn create_worker_pool(db_pools: DatabasePools) -> Arc<RouteWorkerPool> {
+        let queue = JobQueue::new(db_pools.primary);
         let config = WorkerPoolConfig::default();
         Arc::new(RouteWorkerPool::new(config, queue))
     }

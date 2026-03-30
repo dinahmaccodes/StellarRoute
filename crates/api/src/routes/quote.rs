@@ -795,7 +795,7 @@ async fn fetch_source_candidates(
     .bind(base_id)
     .bind(quote_id)
     .bind(venue_type)
-    .fetch_all(&state.db)
+    .fetch_all(state.db.read_pool())
     .await?;
 
     Ok(rows
@@ -833,7 +833,7 @@ async fn get_liquidity_revision(
     )
     .bind(base_id)
     .bind(quote_id)
-    .fetch_one(&state.db)
+    .fetch_one(state.db.read_pool())
     .await?;
 
     let revision: i64 = row.get("revision");
@@ -855,7 +855,7 @@ async fn find_asset_id(state: &AppState, asset: &AssetPath) -> Result<uuid::Uuid
             "#,
         )
         .bind(&asset_type)
-        .fetch_optional(&state.db)
+        .fetch_optional(state.db.read_pool())
         .await?
     } else {
         sqlx::query(
@@ -870,7 +870,7 @@ async fn find_asset_id(state: &AppState, asset: &AssetPath) -> Result<uuid::Uuid
         .bind(&asset_type)
         .bind(&asset.asset_code)
         .bind(&asset.asset_issuer)
-        .fetch_optional(&state.db)
+        .fetch_optional(state.db.read_pool())
         .await?
     };
 

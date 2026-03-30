@@ -10,6 +10,7 @@ use stellarroute_api::routes::ws::{
     registry::{ConnId, Subscription, SubscriptionRegistry},
     rate_limit::MessageRateLimiter,
 };
+use stellarroute_api::state::DatabasePools;
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
@@ -288,7 +289,7 @@ mod live {
             })
         };
 
-        let state = Arc::new(AppState::new(pool).with_ws(ws_state));
+        let state = Arc::new(AppState::new(DatabasePools::new(pool, None)).with_ws(ws_state));
         let router = stellarroute_api::routes::create_router(state);
 
         let listener = TcpListener::bind("127.0.0.1:0")

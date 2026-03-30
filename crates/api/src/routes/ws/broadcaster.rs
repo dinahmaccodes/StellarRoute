@@ -335,7 +335,7 @@ async fn find_asset_id(
             "#,
         )
         .bind(&asset_type)
-        .fetch_optional(&state.db)
+        .fetch_optional(state.db.read_pool())
         .await?
     } else {
         sqlx::query(
@@ -350,7 +350,7 @@ async fn find_asset_id(
         .bind(&asset_type)
         .bind(&asset.asset_code)
         .bind(&asset.asset_issuer)
-        .fetch_optional(&state.db)
+        .fetch_optional(state.db.read_pool())
         .await?
     };
 
@@ -378,7 +378,7 @@ async fn get_liquidity_revision(
     )
     .bind(base_id)
     .bind(quote_id)
-    .fetch_one(&state.db)
+    .fetch_one(state.db.read_pool())
     .await?;
 
     let revision: i64 = row.get("revision");
@@ -408,7 +408,7 @@ async fn find_best_price(
     )
     .bind(base_id)
     .bind(quote_id)
-    .fetch_all(&state.db)
+    .fetch_all(state.db.read_pool())
     .await?;
 
     if rows.is_empty() {
