@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use rust_decimal::Decimal;
 use rust_decimal::prelude::ToPrimitive;
 
-use crate::error::{Result, IndexerError};
+use crate::error::Result;
 
 const JOB_ID: &str = "historical_liquidity_normalization";
 
