@@ -247,7 +247,7 @@ async fn check_multi_hop_support() -> CheckResult {
             status: "Pass".to_string(),
             message: format!("Max hops configured to {}", max_hops),
     let policy = engine.routing_policy();
-    
+
     if policy.max_hops >= 2 {
         CheckResult {
             name: "Multi-hop Support".to_string(),
