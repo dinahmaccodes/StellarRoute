@@ -15,6 +15,8 @@ use stellarroute_routing::adaptive_timeout::TimeoutController;
 use stellarroute_routing::canary::{CanaryConfig, CanaryEvaluation};
 use stellarroute_routing::health::circuit_breaker::CircuitBreakerRegistry;
 
+use crate::audit::AuditWriter;
+use crate::indexer_lag::IndexerLagMonitor;
 use crate::worker::{JobQueue, RouteWorkerPool, WorkerPoolConfig};
 
 /// Primary database pool for write operations plus an optional replica pool
@@ -148,6 +150,10 @@ pub struct AppState {
     pub canary_history: Arc<tokio::sync::RwLock<std::collections::VecDeque<CanaryEvaluation>>>,
     /// Dynamic timeout controller for quote discovery
     pub timeout_controller: Arc<TimeoutController>,
+    /// Non-blocking audit log writer for route decisions
+    pub audit_writer: Arc<AuditWriter>,
+    /// Indexer lag monitor for sync drift detection
+    pub indexer_lag: Arc<IndexerLagMonitor>,
 }
 
 impl AppState {
@@ -162,6 +168,11 @@ impl AppState {
         graph_manager.clone().start_sync();
 
         let kill_switch = Arc::new(crate::kill_switch::KillSwitchManager::new(None));
+        let audit_writer = Arc::new(AuditWriter::from_env(db.write_pool().clone()));
+        let indexer_lag = Arc::new(IndexerLagMonitor::from_env(db.write_pool().clone()));
+        indexer_lag
+            .clone()
+            .start_polling(std::time::Duration::from_secs(30));
 
         Self {
             db,
@@ -185,6 +196,8 @@ impl AppState {
                 std::collections::VecDeque::with_capacity(1000),
             )),
             timeout_controller: Arc::new(TimeoutController::new(Default::default())),
+            audit_writer,
+            indexer_lag,
         }
     }
 
@@ -206,6 +219,11 @@ impl AppState {
         let kill_switch = Arc::new(crate::kill_switch::KillSwitchManager::new(Some(
             cache_arc.clone(),
         )));
+        let audit_writer = Arc::new(AuditWriter::from_env(db.write_pool().clone()));
+        let indexer_lag = Arc::new(IndexerLagMonitor::from_env(db.write_pool().clone()));
+        indexer_lag
+            .clone()
+            .start_polling(std::time::Duration::from_secs(30));
 
         // Spawn a task to load initial state from Redis
         let ks = kill_switch.clone();
@@ -236,6 +254,8 @@ impl AppState {
                 std::collections::VecDeque::with_capacity(1000),
             )),
             timeout_controller: Arc::new(TimeoutController::new(Default::default())),
+            audit_writer,
+            indexer_lag,
         }
     }
 
@@ -243,7 +263,22 @@ impl AppState {
     fn create_worker_pool(db: PgPool) -> Arc<RouteWorkerPool> {
         let queue = JobQueue::new(db);
         let config = WorkerPoolConfig::default();
-        Arc::new(RouteWorkerPool::new(config, queue))
+        let pool = Arc::new(RouteWorkerPool::new(config, queue));
+
+        // Spawn a background task that periodically pushes per-priority queue
+        // depth and virtual-clock values to Prometheus gauges.
+        let pool_ref = pool.clone();
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(5));
+            loop {
+                interval.tick().await;
+                let snapshot = pool_ref.metrics().await;
+                crate::metrics::update_queue_depth_gauges(&snapshot.pending_by_priority);
+                crate::metrics::update_virtual_clock(snapshot.virtual_clock);
+            }
+        });
+
+        pool
     }
 
     /// Wrap in Arc for sharing across handlers
