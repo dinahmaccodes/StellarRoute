@@ -15,6 +15,9 @@ fn create_test_graph() -> Vec<LiquidityEdge> {
             venue_ref: "pool_xlm_usdc".to_string(),
             liquidity: 1_000_000_000,
             price: 1.0,
+            fee_bps: 30, // 100 XLM
+            anomaly_score: 0.0,
+            anomaly_reasons: vec![],
             fee_bps: 30,
             anomaly_score: 0.0,
             anomaly_reasons: vec![], // 100 XLM
@@ -26,6 +29,9 @@ fn create_test_graph() -> Vec<LiquidityEdge> {
             venue_ref: "book_xlm_eurt".to_string(),
             liquidity: 500_000_000,
             price: 1.0,
+            fee_bps: 30, // 50 XLM
+            anomaly_score: 0.0,
+            anomaly_reasons: vec![],
             fee_bps: 30,
             anomaly_score: 0.0,
             anomaly_reasons: vec![], // 50 XLM
@@ -38,6 +44,9 @@ fn create_test_graph() -> Vec<LiquidityEdge> {
             venue_ref: "pool_usdc_eurt".to_string(),
             liquidity: 800_000_000,
             price: 1.0,
+            fee_bps: 30, // 80 USDC
+            anomaly_score: 0.0,
+            anomaly_reasons: vec![],
             fee_bps: 30,
             anomaly_score: 0.0,
             anomaly_reasons: vec![], // 80 USDC
@@ -49,6 +58,9 @@ fn create_test_graph() -> Vec<LiquidityEdge> {
             venue_ref: "book_eurt_btc".to_string(),
             liquidity: 200_000_000,
             price: 1.0,
+            fee_bps: 30, // 20 EURT
+            anomaly_score: 0.0,
+            anomaly_reasons: vec![],
             fee_bps: 30,
             anomaly_score: 0.0,
             anomaly_reasons: vec![], // 20 EURT
@@ -60,6 +72,9 @@ fn create_test_graph() -> Vec<LiquidityEdge> {
             venue_ref: "pool_usdc_btc".to_string(),
             liquidity: 300_000_000,
             price: 1.0,
+            fee_bps: 30, // 30 USDC
+            anomaly_score: 0.0,
+            anomaly_reasons: vec![],
             fee_bps: 30,
             anomaly_score: 0.0,
             anomaly_reasons: vec![], // 30 USDC
@@ -72,6 +87,9 @@ fn create_test_graph() -> Vec<LiquidityEdge> {
             venue_ref: "pool_xlm_btc".to_string(),
             liquidity: 150_000_000,
             price: 1.0,
+            fee_bps: 30, // 15 XLM
+            anomaly_score: 0.0,
+            anomaly_reasons: vec![],
             fee_bps: 30,
             anomaly_score: 0.0,
             anomaly_reasons: vec![], // 15 XLM
