@@ -315,6 +315,7 @@ impl Default for HealthScoringConfig {
             depth_levels: default_depth_levels(),
             freshness_threshold_secs: FreshnessThresholds::default(),
             anomaly: Default::default(),
+            anomaly: crate::health::anomaly::AnomalyConfig::default(),
         }
     }
 }

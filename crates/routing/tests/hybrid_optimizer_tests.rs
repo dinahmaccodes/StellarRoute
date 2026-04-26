@@ -18,6 +18,9 @@ fn create_test_graph() -> Vec<LiquidityEdge> {
             fee_bps: 30, // 100 XLM
             anomaly_score: 0.0,
             anomaly_reasons: vec![],
+            fee_bps: 30,
+            anomaly_score: 0.0,
+            anomaly_reasons: vec![], // 100 XLM
         },
         LiquidityEdge {
             from: "XLM".to_string(),
@@ -29,6 +32,9 @@ fn create_test_graph() -> Vec<LiquidityEdge> {
             fee_bps: 30, // 50 XLM
             anomaly_score: 0.0,
             anomaly_reasons: vec![],
+            fee_bps: 30,
+            anomaly_score: 0.0,
+            anomaly_reasons: vec![], // 50 XLM
         },
         // Multi-hop paths
         LiquidityEdge {
@@ -41,6 +47,9 @@ fn create_test_graph() -> Vec<LiquidityEdge> {
             fee_bps: 30, // 80 USDC
             anomaly_score: 0.0,
             anomaly_reasons: vec![],
+            fee_bps: 30,
+            anomaly_score: 0.0,
+            anomaly_reasons: vec![], // 80 USDC
         },
         LiquidityEdge {
             from: "EURT".to_string(),
@@ -52,6 +61,9 @@ fn create_test_graph() -> Vec<LiquidityEdge> {
             fee_bps: 30, // 20 EURT
             anomaly_score: 0.0,
             anomaly_reasons: vec![],
+            fee_bps: 30,
+            anomaly_score: 0.0,
+            anomaly_reasons: vec![], // 20 EURT
         },
         LiquidityEdge {
             from: "USDC".to_string(),
@@ -63,6 +75,9 @@ fn create_test_graph() -> Vec<LiquidityEdge> {
             fee_bps: 30, // 30 USDC
             anomaly_score: 0.0,
             anomaly_reasons: vec![],
+            fee_bps: 30,
+            anomaly_score: 0.0,
+            anomaly_reasons: vec![], // 30 USDC
         },
         // Additional liquidity sources
         LiquidityEdge {
@@ -75,6 +90,9 @@ fn create_test_graph() -> Vec<LiquidityEdge> {
             fee_bps: 30, // 15 XLM
             anomaly_score: 0.0,
             anomaly_reasons: vec![],
+            fee_bps: 30,
+            anomaly_score: 0.0,
+            anomaly_reasons: vec![], // 15 XLM
         },
     ]
 }
